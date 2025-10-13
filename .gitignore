@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Databases
+*.db
+*.sql
+qdrant_storage/
+
+# Environment
+.env
+*.log
+
+# IDE
+.vscode/
