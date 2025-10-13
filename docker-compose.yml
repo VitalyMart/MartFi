@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: martfi
+      POSTGRES_USER: martfi_user
+      POSTGRES_PASSWORD: martfi_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
