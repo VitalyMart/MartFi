@@ -6,13 +6,13 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
+from .config import settings
 import os
 
 
-pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-SQLALCHEMY_DATABASE_URL = "postgresql://martfi_user:martfi_password@localhost:5432/martfi"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -20,7 +20,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
-    password = Column(String)
+    hashed_password = Column(String)
     full_name = Column(String)
 
 Base.metadata.create_all(bind=engine)
@@ -78,7 +78,7 @@ async def register(
         })
     
     hashed_password = get_password_hash(password)
-    user = User(email=email, password=hashed_password, full_name=full_name)
+    user = User(email=email, hashed_password=hashed_password, full_name=full_name)
     db.add(user)
     db.commit()
     
@@ -92,7 +92,7 @@ async def login(
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password):
+    if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse("login.html", {
             "request": request,
             "error": "Неверный email или пароль"
