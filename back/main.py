@@ -26,8 +26,13 @@ class User(Base):
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "front")
-templates = Jinja2Templates(directory=frontend_path)
+pages_path = os.path.join(os.path.dirname(__file__), "..", "front/templates")
+static_path = os.path.join(os.path.dirname(__file__), "..", "front/static")
+
+templates = Jinja2Templates(directory=pages_path)
+app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 def get_db():
     db = SessionLocal()
@@ -95,4 +100,3 @@ async def login(
     
     return RedirectResponse("/", status_code=303)
 
-app.mount("/static", StaticFiles(directory=frontend_path), name="static")
