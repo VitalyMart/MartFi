@@ -1,6 +1,11 @@
 annotated-types==0.7.0
 anyio==4.11.0
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+async-timeout==5.0.1
+cffi==2.0.0
 click==8.3.0
+cryptography==46.0.3
 exceptiongroup==1.3.0
 fastapi==0.119.0
 greenlet==3.2.4
@@ -10,9 +15,14 @@ Jinja2==3.1.6
 MarkupSafe==3.0.3
 passlib==1.7.4
 psycopg2-binary==2.9.11
+pycparser==2.23
 pydantic==2.12.0
 pydantic_core==2.41.1
+python-decouple==3.8
+python-dotenv==1.1.1
+python-jose==3.5.0
 python-multipart==0.0.20
+redis==7.0.0
 sniffio==1.3.1
 SQLAlchemy==2.0.44
 starlette==0.48.0
