@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 import os
 import redis
 import secrets
+import re
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -46,10 +47,27 @@ def get_db():
     finally:
         db.close()
 
+def validate_email(email: str) -> bool:
+    """Валидация email адреса"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_password(password: str) -> tuple[bool, str]:
+    """Валидация пароля"""
+    if len(password) < 8:
+        return False, "Пароль должен содержать минимум 8 символов"
+    if not any(c.isupper() for c in password):
+        return False, "Пароль должен содержать хотя бы одну заглавную букву"
+    if not any(c.islower() for c in password):
+        return False, "Пароль должен содержать хотя бы одну строчную букву"
+    if not any(c.isdigit() for c in password):
+        return False, "Пароль должен содержать хотя бы одну цифру"
+    return True, ""
+
 def create_access_token(user_id: int):
     jwt_id = secrets.token_urlsafe(16)
     now = datetime.now(timezone.utc)
-    expire = now + timedelta(minutes=int(settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     payload = {
         "sub": str(user_id),
@@ -92,8 +110,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return None
         
-    user = db.query(User).filter(User.id == user_id).first()
-    return user
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        return user
+    except (ValueError, TypeError):
+        return None
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -141,11 +162,28 @@ async def register(
     full_name: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    if len(password) < 8:
+    
+    if not validate_email(email):
         return templates.TemplateResponse("register.html", {
             "request": request, 
-            "error": "Пароль должен содержать минимум 8 символов"
+            "error": "Некорректный формат email"
         })
+    
+    
+    is_valid_password, password_error = validate_password(password)
+    if not is_valid_password:
+        return templates.TemplateResponse("register.html", {
+            "request": request, 
+            "error": password_error
+        })
+    
+    
+    if len(full_name.strip()) < 2:
+        return templates.TemplateResponse("register.html", {
+            "request": request, 
+            "error": "ФИО должно содержать минимум 2 символа"
+        })
+    
     
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
@@ -154,8 +192,13 @@ async def register(
             "error": "Email уже зарегистрирован"
         })
     
+    
     hashed_password = get_password_hash(password)
-    user = User(email=email, hashed_password=hashed_password, full_name=full_name)
+    user = User(
+        email=email.lower().strip(),  
+        hashed_password=hashed_password, 
+        full_name=full_name.strip()
+    )
     db.add(user)
     db.commit()
     
@@ -168,6 +211,15 @@ async def login(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    
+    email = email.lower().strip()
+    
+    if not validate_email(email):
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Неверный email или пароль"  
+        })
+    
     if is_rate_limited(email):
         return templates.TemplateResponse("login.html", {
             "request": request,
@@ -176,10 +228,14 @@ async def login(
     
     user = db.query(User).filter(User.email == email).first()
     
-    dummy_hash = pwd_context.hash("dummy")
+    
+    dummy_hash = pwd_context.hash(secrets.token_urlsafe(32))
     hash_to_check = user.hashed_password if user else dummy_hash
     
-    if not user or not pwd_context.verify(password, hash_to_check):
+    
+    is_valid = pwd_context.verify(password, hash_to_check)
+    
+    if not user or not is_valid:
         increment_login_attempts(email)
         return templates.TemplateResponse("login.html", {
             "request": request,
@@ -194,7 +250,7 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        max_age=1800,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=not settings.DEBUG,
         samesite="lax"
     )
@@ -203,5 +259,10 @@ async def login(
 @app.post("/logout")
 async def logout():
     response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie("access_token")
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax"
+    )
     return response

@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: martfi
       POSTGRES_USER: martfi_user
-      POSTGRES_PASSWORD: martfi_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-martfi_password}
     ports:
       - "5432:5432"
     volumes:
@@ -27,9 +27,9 @@ services:
       - redis_data:/data
     networks:
       - app-network
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
