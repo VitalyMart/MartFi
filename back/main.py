@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -30,7 +31,7 @@ class User(Base):
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "front")
 pages_path = os.path.join(os.path.dirname(__file__), "..", "front/templates")
 static_path = os.path.join(os.path.dirname(__file__), "..", "front/static")
@@ -39,6 +40,27 @@ templates = Jinja2Templates(directory=pages_path)
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+def generate_csrf_token() -> str:
+    """Генерирует CSRF токен"""
+    return secrets.token_urlsafe(32)
+
+def validate_csrf_token(token: str, request: Request) -> bool:
+    """Проверяет CSRF токен"""
+    stored_token = request.session.get("csrf_token")
+    return stored_token and secrets.compare_digest(token, stored_token)
+
+def get_csrf_token(request: Request) -> str:
+    """Получает или создает CSRF токен для сессии"""
+    if "csrf_token" not in request.session:
+        request.session["csrf_token"] = generate_csrf_token()
+    return request.session["csrf_token"]
+
+async def csrf_protect(request: Request, csrf_token: str = Form(...)):
+    """Зависимость для проверки CSRF токена"""
+    if not validate_csrf_token(csrf_token, request):
+        raise HTTPException(status_code=403, detail="Invalid CSRF token")
+    return True
 
 def get_db():
     db = SessionLocal()
@@ -146,13 +168,25 @@ async def root(request: Request, current_user = Depends(get_current_user)):
 async def login_page(request: Request, current_user = Depends(get_current_user)):
     if current_user:
         return RedirectResponse("/")
-    return templates.TemplateResponse("login.html", {"request": request})
+    
+    csrf_token = get_csrf_token(request)
+    
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "csrf_token": csrf_token
+    })
 
 @app.get("/register")
 async def register_page(request: Request, current_user = Depends(get_current_user)):
     if current_user:
         return RedirectResponse("/")
-    return templates.TemplateResponse("register.html", {"request": request})
+    
+    csrf_token = get_csrf_token(request)
+    
+    return templates.TemplateResponse("register.html", {
+        "request": request,
+        "csrf_token": csrf_token
+    })
 
 @app.post("/register")
 async def register(
@@ -160,38 +194,43 @@ async def register(
     email: str = Form(...),
     password: str = Form(...),
     full_name: str = Form(...),
+    csrf_verified: bool = Depends(csrf_protect),  
     db: Session = Depends(get_db)
 ):
     
     if not validate_email(email):
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("register.html", {
             "request": request, 
-            "error": "Некорректный формат email"
+            "error": "Некорректный формат email",
+            "csrf_token": csrf_token
         })
-    
     
     is_valid_password, password_error = validate_password(password)
     if not is_valid_password:
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("register.html", {
             "request": request, 
-            "error": password_error
+            "error": password_error,
+            "csrf_token": csrf_token
         })
-    
     
     if len(full_name.strip()) < 2:
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("register.html", {
             "request": request, 
-            "error": "ФИО должно содержать минимум 2 символа"
+            "error": "ФИО должно содержать минимум 2 символа",
+            "csrf_token": csrf_token
         })
-    
     
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("register.html", {
             "request": request, 
-            "error": "Email уже зарегистрирован"
+            "error": "Email уже зарегистрирован",
+            "csrf_token": csrf_token
         })
-    
     
     hashed_password = get_password_hash(password)
     user = User(
@@ -209,37 +248,42 @@ async def login(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
+    csrf_verified: bool = Depends(csrf_protect),  
     db: Session = Depends(get_db)
 ):
     
     email = email.lower().strip()
     
     if not validate_email(email):
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("login.html", {
             "request": request,
-            "error": "Неверный email или пароль"  
+            "error": "Неверный email или пароль",
+            "csrf_token": csrf_token
         })
     
     if is_rate_limited(email):
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("login.html", {
             "request": request,
-            "error": "Слишком много попыток входа. Попробуйте через час"
+            "error": "Слишком много попыток входа. Попробуйте через час",
+            "csrf_token": csrf_token
         })
     
     user = db.query(User).filter(User.email == email).first()
     
-    
     dummy_hash = pwd_context.hash(secrets.token_urlsafe(32))
     hash_to_check = user.hashed_password if user else dummy_hash
-    
     
     is_valid = pwd_context.verify(password, hash_to_check)
     
     if not user or not is_valid:
         increment_login_attempts(email)
+        csrf_token = get_csrf_token(request)
         return templates.TemplateResponse("login.html", {
             "request": request,
-            "error": "Неверный email или пароль"
+            "error": "Неверный email или пароль",
+            "csrf_token": csrf_token
         })
     
     clear_login_attempts(email)
@@ -257,7 +301,7 @@ async def login(
     return response
 
 @app.post("/logout")
-async def logout():
+async def logout(request: Request, csrf_verified: bool = Depends(csrf_protect)): 
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(
         key="access_token",

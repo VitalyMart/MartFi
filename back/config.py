@@ -17,6 +17,8 @@ class Settings:
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     ALGORITHM = os.getenv("ALGORITHM", "HS256")
     
+    CSRF_TOKEN_EXPIRE_MINUTES = int(os.getenv("CSRF_TOKEN_EXPIRE_MINUTES", "30"))
+    
     try:
         ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     except (TypeError, ValueError):

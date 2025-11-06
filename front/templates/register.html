@@ -13,6 +13,8 @@
         {% endif %}
         
         <form method="post" action="/register" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
             <div class="form-group">
                 <label for="full_name">ФИО:</label>
                 <input type="text" id="full_name" name="full_name" required>

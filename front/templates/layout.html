@@ -57,11 +57,14 @@
                 </li>
             </ul>
             
-            <div class="sidebar-footer">
-                <form method="post" action="/logout">
-                    <button type="submit" class="btn btn-logout">Выйти</button>
-                </form>
-            </div>
+
+<div class="sidebar-footer">
+    <form method="post" action="/logout">
+        
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-logout">Выйти</button>
+    </form>
+</div>
         </nav>
 
         <!-- Main Content -->
