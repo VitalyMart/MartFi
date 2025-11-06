@@ -1,25 +1,41 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MartFi — Главная</title>
-    <link rel="stylesheet" href="/static/css/main.css">
-</head>
-<body>
-    <div class="container">
-        <h1>MartFi</h1>
-        <p class="subtitle">Financial Intelligence Platform</p>
-        
-   
-        {% if user %}
-        <p class="welcome">Добро пожаловать, <strong>{{ user.full_name }}</strong>!</p>
-        {% endif %}
+{% extends "layout.html" %}
 
+{% block title %}Главная{% endblock %}
 
-        <form method="post" action="/logout" style="display: inline;">
-            <button type="submit" class="btn btn-secondary">Выйти</button>
-        </form>
+{% block content %}
+<div class="content-header">
+    <h1>Главная</h1>
+</div>
+
+<div class="card">
+    <h2>Добро пожаловать в MartFi!</h2>
+    <p class="project-description">
+        MartFi — это современная финансовая платформа для управления вашими инвестициями. 
+        Здесь вы можете отслеживать активы, анализировать портфель, получать рекомендации 
+        от AI-ассистента и обучаться инвестированию.
+    </p>
+    
+    <div class="features-grid">
+        <div class="feature-item">
+            <span class="feature-icon">💼</span>
+            <h3>Активы</h3>
+            <p>Управление и отслеживание ваших инвестиционных активов</p>
+        </div>
+        <div class="feature-item">
+            <span class="feature-icon">🤖</span>
+            <h3>Ассистент</h3>
+            <p>AI-помощник для финансовых рекомендаций и аналитики</p>
+        </div>
+        <div class="feature-item">
+            <span class="feature-icon">📊</span>
+            <h3>Портфель</h3>
+            <p>Детальный анализ вашего инвестиционного портфеля</p>
+        </div>
+        <div class="feature-item">
+            <span class="feature-icon">🎓</span>
+            <h3>Обучение</h3>
+            <p>Образовательные материалы по инвестированию</p>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

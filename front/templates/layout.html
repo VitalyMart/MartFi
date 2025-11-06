@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MartFi — {% block title %}Финансовая платформа{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Toggle Button -->
+        <button class="sidebar-toggle" id="sidebarToggle">✕</button>
+
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>MartFi</h2>
+                <p class="user-welcome">Добро пожаловать, <strong>{{ user.full_name }}</strong>!</p>
+            </div>
+            
+            <ul class="nav-links">
+                <li class="nav-item">
+                    <a href="/" class="nav-link">
+                        <span class="nav-icon">🏠</span>
+                        <span class="nav-text">Главная</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/assets" class="nav-link">
+                        <span class="nav-icon">💼</span>
+                        <span class="nav-text">Активы</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/assistant" class="nav-link">
+                        <span class="nav-icon">🤖</span>
+                        <span class="nav-text">Ассистент</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/portfolio" class="nav-link">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Портфель</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/learning" class="nav-link">
+                        <span class="nav-icon">🎓</span>
+                        <span class="nav-text">Обучение</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/profile" class="nav-link">
+                        <span class="nav-icon">👤</span>
+                        <span class="nav-text">Профиль</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <form method="post" action="/logout">
+                    <button type="submit" class="btn btn-logout">Выйти</button>
+                </form>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
