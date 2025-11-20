@@ -1,39 +1,29 @@
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, Response
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
-from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from passlib.context import CryptContext
-from .config import settings
-from jose import JWTError, jwt
-from datetime import datetime, timezone, timedelta
-import os
-import redis
-import secrets
-import re
 import logging
+import os
+import re
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
+
+from .config import settings
+from .models.user import User
+from .database import get_db, create_tables
+from .redis_client import redis_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-engine = create_engine(settings.DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
-    full_name = Column(String(100), nullable=False)
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
@@ -44,7 +34,6 @@ static_path = os.path.join(os.path.dirname(__file__), "..", "front/static")
 templates = Jinja2Templates(directory=pages_path)
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 
-redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 COMMON_PASSWORDS = {
     "password", "123456", "12345678", "123456789", "qwerty", "abc123",
@@ -73,15 +62,6 @@ async def csrf_protect(request: Request, csrf_token: str = Form(...)):
     request.session.pop("csrf_token", None)
     return True
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    except Exception as e:
-        logger.error(f"Database error: {e}")
-        raise HTTPException(status_code=500, detail="Database error")
-    finally:
-        db.close()
 
 def validate_email(email: str) -> bool:
     if len(email) > 254:
