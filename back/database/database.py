@@ -1,8 +1,10 @@
 import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from .config import settings
-from .models.base import Base
+from sqlalchemy.exc import SQLAlchemyError
+
+from .base import Base
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +15,13 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
+        db.rollback()
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in database session: {e}")
+        db.rollback()
         raise
     finally:
         db.close()
