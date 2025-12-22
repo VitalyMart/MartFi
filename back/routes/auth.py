@@ -1,33 +1,30 @@
-from fastapi import APIRouter, Depends, Form, Request, Response, Cookie
+from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from typing import Annotated, Optional
+from typing import Annotated
 
-# Импорты из security.py (без verify_token)
-from ...auth.security import (
+from ..auth.security import (
     get_csrf_token,
     csrf_protect,
     validate_password,
     verify_user_password,
 )
 
-# Импорты из services.py (включая verify_token)
-from ...auth.services import (
+from ..auth.services import (
     create_access_token,
     is_email_registered,
     create_user,
-    verify_token,  # ← теперь правильно
+    verify_token,
     EmailAlreadyExistsError,
     UserCreationError,
 )
 
-from ...auth.validators import (
+from ..auth.validators import (
     validate_full_name,
     normalize_and_validated_email,
 )
 
-from ...core import (
+from ..core import (
     redis_client,
     is_rate_limited,
     increment_rate_limit,
@@ -36,13 +33,13 @@ from ...core import (
     increment_registration_attempts,
     get_login_rate_key,
 )
-from ...core.logger import logger
-from ...database import get_db
-from ...database.models import User
-from ...config import settings
-from ...web.utils import render_form_error
-from ...auth.dependencies import get_current_user
-from ...web.dependencies import get_templates
+from ..core.logger import logger
+from ..database import get_db
+from ..database.models import User
+from ..config import settings
+from ..utils import render_form_error
+from ..auth.dependencies import get_current_user
+from ..templates import templates  
 
 router = APIRouter()
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -52,7 +49,6 @@ DatabaseSession = Annotated[Session, Depends(get_db)]
 async def login_page(
     request: Request,
     current_user: User = Depends(get_current_user),
-    templates: Jinja2Templates = Depends(get_templates)
 ):
     if current_user:
         return RedirectResponse("/")
@@ -71,7 +67,6 @@ async def login_page(
 async def register_page(
     request: Request,
     current_user: User = Depends(get_current_user),
-    templates: Jinja2Templates = Depends(get_templates)
 ):
     if current_user:
         return RedirectResponse("/")
@@ -94,7 +89,6 @@ async def register(
     password: str = Form(...),
     full_name: str = Form(...),
     csrf_verified: bool = Depends(csrf_protect),
-    templates: Jinja2Templates = Depends(get_templates)
 ):
     client_ip = request.client.host
     if is_registration_rate_limited(client_ip):
@@ -104,8 +98,7 @@ async def register(
         return render_form_error(
             request,
             "register.html",
-            "Too many registration attempts. Try again later",
-            templates
+            "Too many registration attempts. Try again later"
         )
 
     normalized_email = normalize_and_validated_email(email)
@@ -114,27 +107,25 @@ async def register(
         return render_form_error(
             request,
             "register.html",
-            "Invalid email format",
-            templates
+            "Invalid email format"
         )
 
     is_valid_pass, pass_error = validate_password(password)
     if not is_valid_pass:
         increment_registration_attempts(client_ip)
-        return render_form_error(request, "register.html", pass_error, templates)
+        return render_form_error(request, "register.html", pass_error)
 
     is_valid_name, name_error = validate_full_name(full_name)
     if not is_valid_name:
         increment_registration_attempts(client_ip)
-        return render_form_error(request, "register.html", name_error, templates)
+        return render_form_error(request, "register.html", name_error)
 
     if is_email_registered(db, normalized_email):
         increment_registration_attempts(client_ip)
         return render_form_error(
             request,
             "register.html",
-            "Email already registered",
-            templates
+            "Email already registered"
         )
 
     try:
@@ -150,8 +141,7 @@ async def register(
         return render_form_error(
             request,
             "register.html",
-            "Email already registered",
-            templates
+            "Email already registered"
         )
     
     except UserCreationError as e:
@@ -160,8 +150,7 @@ async def register(
         return render_form_error(
             request,
             "register.html",
-            "Registration error. Try again later",
-            templates
+            "Registration error. Try again later"
         )
     
     except Exception as e:
@@ -172,8 +161,7 @@ async def register(
         return render_form_error(
             request,
             "register.html",
-            "Unexpected error. Try again later",
-            templates
+            "Unexpected error. Try again later"
         )
 
 
@@ -184,15 +172,13 @@ async def login(
     email: str = Form(...),
     password: str = Form(...),
     csrf_verified: bool = Depends(csrf_protect),
-    templates: Jinja2Templates = Depends(get_templates)
 ):
     normalized_email = normalize_and_validated_email(email)
     if not normalized_email:
         return render_form_error(
             request,
             "login.html",
-            "Invalid email or password",
-            templates
+            "Invalid email or password"
         )
     
     login_key = get_login_rate_key(normalized_email)
@@ -202,8 +188,7 @@ async def login(
         return render_form_error(
             request,
             "login.html",
-            "Too many login attempts",
-            templates
+            "Too many login attempts"
         )
     
     user = verify_user_password(db, email, password)
@@ -214,8 +199,7 @@ async def login(
         return render_form_error(
             request,
             "login.html",
-            "Invalid email or password",
-            templates
+            "Invalid email or password"
         )
     
     clear_rate_limit(login_key)

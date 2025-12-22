@@ -8,11 +8,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from .config import settings
 from .database import create_tables
 from .core.logger import logger
-from .web.routes.auth import router as auth_router
-from .web.routes.main import router as main_router
-from .web.routes.market import router as market_router
-from .web.templates import setup_templates
-from .web.dependencies import set_templates
+from .routes.auth import router as auth_router
+from .routes.main import router as main_router
+from .routes.market import router as market_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,9 +31,6 @@ app.add_middleware(
 )
 
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "front")
-templates = setup_templates(frontend_path)
-set_templates(templates)
-
 static_path = os.path.join(frontend_path, "static")
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 

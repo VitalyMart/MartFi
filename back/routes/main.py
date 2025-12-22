@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 
-from ...auth.security import get_csrf_token
-from ...database.models import User
-from ...auth.dependencies import get_current_user
-from ...web.dependencies import get_templates
+from ..auth.security import get_csrf_token
+from ..database.models import User
+from ..auth.dependencies import get_current_user
+from ..templates import templates  # Просто импортируем глобальный экземпляр
+
 router = APIRouter()
 
 
@@ -13,7 +13,6 @@ router = APIRouter()
 async def root(
     request: Request,
     current_user: User = Depends(get_current_user),
-    templates: Jinja2Templates = Depends(get_templates)
 ):
     if not current_user:
         return RedirectResponse("/login")
