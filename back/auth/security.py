@@ -69,7 +69,7 @@ def verify_user_password(db: Session, email: str, password: str):
     
     # Фиксированная задержка для защиты от timing-атак
     execution_time = time.time() - start_time
-    fixed_delay = 0.5  # Фиксированная задержка 500ms
+    fixed_delay = 0.05
     
     if execution_time < fixed_delay:
         time.sleep(fixed_delay - execution_time)

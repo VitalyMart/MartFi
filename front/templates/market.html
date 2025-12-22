@@ -19,30 +19,44 @@
         </button>
         <div class="accordion-content" id="stocks">
             <div class="assets-list">
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">Сбербанк</h3>
-                            <p class="stock-ticker">SBER</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">300 руб.</div>
-                            <div class="stock-change positive">+1.25%</div>
+                {% if stocks %}
+                    {% for stock in stocks %}
+                    <div class="stock-card">
+                        <div class="stock-info">
+                            <div>
+                                <h3 class="stock-name">{{ stock.name }}</h3>
+                                <p class="stock-ticker">{{ stock.ticker }}</p>
+                                {% if stock.full_name %}
+                                <p class="stock-fullname">{{ stock.full_name|truncate(60) }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="price-section">
+                                <div class="stock-price">
+                                    {% if stock.price > 0 %}
+                                        {{ "%.2f"|format(stock.price) }} руб.
+                                    {% else %}
+                                        Нет данных
+                                    {% endif %}
+                                </div>
+                                <div class="stock-change 
+                                    {% if stock.change > 0 %}positive
+                                    {% elif stock.change < 0 %}negative{% endif %}">
+                                    {% if stock.change > 0 %}+{% endif %}
+                                    {% if stock.change != 0 %}
+                                        {{ "%.2f"|format(stock.change) }} руб.
+                                    {% else %}
+                                        0.00 руб.
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">Лукойл</h3>
-                            <p class="stock-ticker">LKOH</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">7 200 руб.</div>
-                            <div class="stock-change negative">-0.42%</div>
-                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-data">
+                        <p>Не удалось загрузить данные по акциям</p>
                     </div>
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -54,17 +68,8 @@
         </button>
         <div class="accordion-content" id="bonds">
             <div class="assets-list">
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">ОФЗ 26237</h3>
-                            <p class="stock-ticker">RU000A0JXJH5</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">98.5%</div>
-                            <div class="stock-change positive">+0.15%</div>
-                        </div>
-                    </div>
+                <div class="no-data">
+                    <p>Данные по облигациям будут добавлены позже</p>
                 </div>
             </div>
         </div>
@@ -77,17 +82,8 @@
         </button>
         <div class="accordion-content" id="funds">
             <div class="assets-list">
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">VTB Фонд Акции</h3>
-                            <p class="stock-ticker">VTBA</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">1 850 руб.</div>
-                            <div class="stock-change positive">+2.10%</div>
-                        </div>
-                    </div>
+                <div class="no-data">
+                    <p>Данные по фондам будут добавлены позже</p>
                 </div>
             </div>
         </div>
@@ -100,29 +96,8 @@
         </button>
         <div class="accordion-content" id="currency">
             <div class="assets-list">
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">USD/RUB</h3>
-                            <p class="stock-ticker">Доллар</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">92.40 руб.</div>
-                            <div class="stock-change negative">-0.30%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">EUR/RUB</h3>
-                            <p class="stock-ticker">Евро</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">101.20 руб.</div>
-                            <div class="stock-change positive">+0.12%</div>
-                        </div>
-                    </div>
+                <div class="no-data">
+                    <p>Данные по валюте будут добавлены позже</p>
                 </div>
             </div>
         </div>
@@ -135,24 +110,15 @@
         </button>
         <div class="accordion-content" id="indices">
             <div class="assets-list">
-                <div class="stock-card">
-                    <div class="stock-info">
-                        <div>
-                            <h3 class="stock-name">IMOEX</h3>
-                            <p class="stock-ticker">Индекс МосБиржи</p>
-                        </div>
-                        <div class="price-section">
-                            <div class="stock-price">3 520 pts</div>
-                            <div class="stock-change positive">+0.87%</div>
-                        </div>
-                    </div>
+                <div class="no-data">
+                    <p>Данные по индексам будут добавлены позже</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
+
 {% block extra_js %}
 <script src="/static/js/market.js"></script>
 {% endblock %}
