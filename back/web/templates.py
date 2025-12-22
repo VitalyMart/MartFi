@@ -1,6 +1,6 @@
 from fastapi.templating import Jinja2Templates
-import os
+from pathlib import Path
 
-def setup_templates(frontend_path: str) -> Jinja2Templates:
-    pages_path = os.path.join(frontend_path, "templates")
-    return Jinja2Templates(directory=pages_path)
+def setup_templates(frontend_dir: str) -> Jinja2Templates:
+    templates_dir = Path(frontend_dir) / "templates"
+    return Jinja2Templates(directory=str(templates_dir))

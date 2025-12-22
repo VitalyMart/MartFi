@@ -12,7 +12,6 @@ from ..core.logger import logger
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 def generate_fake_hash() -> str:
-    """Генерация фиктивного хеша для защиты от timing-атак"""
     return pwd_context.hash(secrets.token_urlsafe(32))
 
 def generate_csrf_token() -> str:
@@ -26,7 +25,6 @@ def validate_csrf_token(token: str, request: Request) -> bool:
         logger.warning(f"Invalid Referer header: {referer}")
         return False
     
-    # Используем hmac.compare_digest для защиты от timing-атак
     return bool(stored_token and hmac.compare_digest(token, stored_token))
 
 def get_csrf_token(request: Request) -> str:
@@ -55,19 +53,15 @@ def validate_password(password: str) -> Tuple[bool, str]:
     return True, ""
 
 def verify_user_password(db: Session, email: str, password: str):
-    """Верификация пароля с защитой от timing-атак"""
     start_time = time.time()
     
     user = db.query(User).filter(User.email == email).first()
     
-    # Всегда выполняем верификацию для фиксированного времени
     fake_hash = generate_fake_hash()
     provided_hash = user.hashed_password if user else fake_hash
     
-    # Используем compare_digest для постоянного времени выполнения
     is_valid = pwd_context.verify(password, provided_hash)
     
-    # Фиксированная задержка для защиты от timing-атак
     execution_time = time.time() - start_time
     fixed_delay = 0.05
     
@@ -77,11 +71,9 @@ def verify_user_password(db: Session, email: str, password: str):
     return user if (user and is_valid) else None
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Верификация пароля с фиксированным временем выполнения"""
     start_time = time.time()
     is_valid = pwd_context.verify(plain_password, hashed_password)
     
-    # Фиксированная задержка
     execution_time = time.time() - start_time
     fixed_delay = 0.5
     
