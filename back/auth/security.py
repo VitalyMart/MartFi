@@ -1,21 +1,24 @@
 import secrets
 import time
+import hmac
 from fastapi import Request, Form, HTTPException
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from typing import Tuple
-import hmac
 
 from ..database.models import User
 from ..core.logger import logger
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
+
 def generate_fake_hash() -> str:
     return pwd_context.hash(secrets.token_urlsafe(32))
 
+
 def generate_csrf_token() -> str:
     return secrets.token_urlsafe(32)
+
 
 def validate_csrf_token(token: str, request: Request) -> bool:
     stored_token = request.session.get("csrf_token")
@@ -27,10 +30,12 @@ def validate_csrf_token(token: str, request: Request) -> bool:
     
     return bool(stored_token and hmac.compare_digest(token, stored_token))
 
+
 def get_csrf_token(request: Request) -> str:
     if "csrf_token" not in request.session:
         request.session["csrf_token"] = generate_csrf_token()
     return request.session["csrf_token"]
+
 
 async def csrf_protect(request: Request, csrf_token: str = Form(...)):
     if not validate_csrf_token(csrf_token, request):
@@ -38,6 +43,7 @@ async def csrf_protect(request: Request, csrf_token: str = Form(...)):
         raise HTTPException(status_code=403, detail="Invalid CSRF token")
     request.session.pop("csrf_token", None)
     return True
+
 
 def validate_password(password: str) -> Tuple[bool, str]:
     if len(password) < 8:
@@ -51,6 +57,7 @@ def validate_password(password: str) -> Tuple[bool, str]:
     if not any(c.isdigit() for c in password):
         return False, "Пароль должен содержать хотя бы одну цифру"
     return True, ""
+
 
 def verify_user_password(db: Session, email: str, password: str):
     start_time = time.time()
@@ -70,6 +77,7 @@ def verify_user_password(db: Session, email: str, password: str):
     
     return user if (user and is_valid) else None
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     start_time = time.time()
     is_valid = pwd_context.verify(plain_password, hashed_password)
@@ -81,6 +89,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         time.sleep(fixed_delay - execution_time)
     
     return is_valid
+
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)

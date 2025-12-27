@@ -1,3 +1,11 @@
-from .market import fetch_moex_data, fetch_stocks
+from .market_service import MarketService
+from .auth_service import AuthService
+from .main_service import MainService
+from .security_service import SecurityService
 
-__all__ = ["fetch_moex_data", "fetch_stocks"]
+__all__ = [
+    "MarketService",
+    "AuthService",
+    "MainService",
+    "SecurityService"
+]
