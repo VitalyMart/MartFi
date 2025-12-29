@@ -7,6 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import settings
 from .database import create_tables
+from .database.models import Stock
 from .core.logger import logger
 from .routes.auth import router as auth_router
 from .routes.main import router as main_router

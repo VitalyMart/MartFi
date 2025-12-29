@@ -11,15 +11,50 @@
     <h1>Рынок</h1>
 </div>
 
-<div class="market-accordion" id="marketAccordion">
-    <div class="accordion-item">
-        <button class="accordion-header" data-target="stocks">
-            <span>Акции</span>
-            <span class="accordion-arrow">▼</span>
-        </button>
-        <div class="accordion-content" id="stocks">
+<div class="market-tabs">
+    <div class="tabs-header">
+        <button class="tab-btn active" data-tab="stocks">Акции</button>
+        <button class="tab-btn" data-tab="bonds">Облигации</button>
+        <button class="tab-btn" data-tab="funds">Фонды</button>
+        <button class="tab-btn" data-tab="currency">Валюта</button>
+        <button class="tab-btn" data-tab="indices">Индексы</button>
+    </div>
+
+    <div class="market-controls">
+        <form method="get" action="/market" class="search-form">
+            <div class="search-container">
+                <input type="text" class="search-input" name="search" value="{{ search_query }}" 
+                       placeholder="Поиск по названию или тикеру...">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_order" value="{{ sort_order }}">
+                <button type="submit" class="search-btn">Найти</button>
+            </div>
+        </form>
+        
+        <div class="sort-container">
+            <form method="get" action="/market" class="sort-form">
+                <input type="hidden" name="search" value="{{ search_query }}">
+                <select name="sort_by" class="sort-select" onchange="this.form.submit()">
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>По названию</option>
+                    <option value="ticker" {% if sort_by == 'ticker' %}selected{% endif %}>По тикеру</option>
+                    <option value="price" {% if sort_by == 'price' %}selected{% endif %}>По цене</option>
+                    <option value="change" {% if sort_by == 'change' %}selected{% endif %}>По изменению</option>
+                </select>
+                <select name="sort_order" class="sort-order-select" onchange="this.form.submit()">
+                    <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
+                    <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <div class="tabs-content">
+        <div class="tab-pane active" id="stocks">
             <div class="assets-list">
                 {% if stocks %}
+                    <div class="stocks-info">
+                        <p>Найдено акций: {{ total_count }}</p>
+                    </div>
                     {% for stock in stocks %}
                     <div class="stock-card">
                         <div class="stock-info">
@@ -28,6 +63,9 @@
                                 <p class="stock-ticker">{{ stock.ticker }}</p>
                                 {% if stock.full_name %}
                                 <p class="stock-fullname">{{ stock.full_name|truncate(60) }}</p>
+                                {% endif %}
+                                {% if stock.sector %}
+                                <p class="stock-sector">{{ stock.sector }}</p>
                                 {% endif %}
                             </div>
                             <div class="price-section">
@@ -52,63 +90,58 @@
                         </div>
                     </div>
                     {% endfor %}
+                    
+                    {% if total_pages > 1 %}
+                    <div class="pagination">
+                        {% if page > 1 %}
+                            <a href="/market?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">← Назад</a>
+                        {% endif %}
+                        
+                        <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+                        
+                        {% if page < total_pages %}
+                            <a href="/market?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">Вперед →</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 {% else %}
                     <div class="no-data">
                         <p>Не удалось загрузить данные по акциям</p>
+                        {% if search_query %}
+                        <p>Попробуйте изменить поисковый запрос</p>
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>
         </div>
-    </div>
 
-    <div class="accordion-item">
-        <button class="accordion-header" data-target="bonds">
-            <span>Облигации</span>
-            <span class="accordion-arrow">▼</span>
-        </button>
-        <div class="accordion-content" id="bonds">
+        <div class="tab-pane" id="bonds">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по облигациям будут добавлены позже</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="accordion-item">
-        <button class="accordion-header" data-target="funds">
-            <span>Фонды</span>
-            <span class="accordion-arrow">▼</span>
-        </button>
-        <div class="accordion-content" id="funds">
+        <div class="tab-pane" id="funds">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по фондам будут добавлены позже</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="accordion-item">
-        <button class="accordion-header" data-target="currency">
-            <span>Валюта</span>
-            <span class="accordion-arrow">▼</span>
-        </button>
-        <div class="accordion-content" id="currency">
+        <div class="tab-pane" id="currency">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по валюте будут добавлены позже</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="accordion-item">
-        <button class="accordion-header" data-target="indices">
-            <span>Индексы</span>
-            <span class="accordion-arrow">▼</span>
-        </button>
-        <div class="accordion-content" id="indices">
+        <div class="tab-pane" id="indices">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по индексам будут добавлены позже</p>

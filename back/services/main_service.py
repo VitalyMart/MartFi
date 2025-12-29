@@ -3,7 +3,7 @@ from fastapi import Request, Response
 from fastapi.responses import RedirectResponse
 from ..database.models import User
 from ..contracts.security import ISecurityService
-
+from ..templates import templates
 
 class MainService:
     def __init__(self, security_service: ISecurityService):
@@ -14,7 +14,7 @@ class MainService:
         request: Request,
         current_user: Optional[User]
     ) -> Response:
-        from ..templates import templates
+        
         
         if not current_user:
             return RedirectResponse("/login")

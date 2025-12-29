@@ -1,16 +1,12 @@
 from typing import Callable
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
-
 from ..contracts.security import ISecurityService
 from ..services.auth_service import AuthService
-from ..services.security_service import SecurityService
 from ..auth.dependencies import get_current_user
 from ..database.models import User
 from ..database import get_db
-
-async def get_security_service() -> ISecurityService:
-    return SecurityService()
+from .common import get_security_service  
 
 async def get_auth_service(
     security_service: ISecurityService = Depends(get_security_service),
@@ -28,12 +24,10 @@ async def get_auth_context_service(
             return await auth_service.get_register_page_context(request, current_user)
         else:
             raise ValueError(f"Unknown page type: {page_type}")
-    
     return get_context
 
 async def get_auth_processor_service(
     auth_service: AuthService = Depends(get_auth_service),
     db: Session = Depends(get_db),
 ) -> tuple:
-    """Возвращает пару (AuthService, db) для обработки POST-запросов"""
     return auth_service, db
