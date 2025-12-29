@@ -6,7 +6,7 @@ from .security import (
 )
 from .validators import validate_full_name, normalize_and_validated_email
 from .services import (
-    create_access_token, verify_token, is_email_registered, create_user,
+    create_access_token, verify_token,
     EmailAlreadyExistsError, UserCreationError, UserServiceError
 )
 
@@ -16,6 +16,6 @@ __all__ = [
     "get_csrf_token", "csrf_protect", "validate_password",
     "verify_user_password", "verify_password", "get_password_hash",
     "validate_full_name", "normalize_and_validated_email",
-    "create_access_token", "verify_token", "is_email_registered", "create_user",
+    "create_access_token", "verify_token",
     "EmailAlreadyExistsError", "UserCreationError", "UserServiceError"
 ]

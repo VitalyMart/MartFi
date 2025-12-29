@@ -36,7 +36,6 @@ class MarketService:
     
     async def get_moex_test_data(self) -> Dict[str, Any]:
         stocks = await self._fetch_moex_data()
-        
         return {
             "message": "MOEX data fetched successfully",
             "stocks_count": len(stocks),

@@ -1,25 +1,13 @@
-from typing import Optional, Tuple
+from typing import Optional
 from fastapi import Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from ..database.models import User
+from ..database.repositories.user_repository import UserRepository
 from ..contracts.security import ISecurityService
-from ..auth.services import (
-    create_access_token,
-    is_email_registered,
-    create_user,
-    verify_token,
-    EmailAlreadyExistsError,
-    UserCreationError,
-)
-from ..auth.validators import (
-    validate_full_name,
-    normalize_and_validated_email,
-)
-from ..auth.security import (
-    validate_password,
-    verify_user_password,
-)
+from ..auth.services import create_access_token, verify_token
+from ..auth.validators import validate_full_name, normalize_and_validated_email
+from ..auth.security import validate_password
 from ..core import (
     redis_client,
     is_rate_limited,
@@ -41,9 +29,7 @@ class AuthService:
     async def get_login_page_context(self, request: Request, current_user: Optional[User]) -> dict:
         if current_user:
             return {"redirect": "/"}
-        
         csrf_token = await self.security_service.get_csrf_token(request)
-        
         return {
             "redirect": None,
             "template_data": {
@@ -55,9 +41,7 @@ class AuthService:
     async def get_register_page_context(self, request: Request, current_user: Optional[User]) -> dict:
         if current_user:
             return {"redirect": "/"}
-        
         csrf_token = await self.security_service.get_csrf_token(request)
-        
         return {
             "redirect": None,
             "template_data": {
@@ -75,6 +59,8 @@ class AuthService:
         full_name: str,
         client_ip: str
     ) -> Response:
+        user_repo = UserRepository(db)
+        
         if is_registration_rate_limited(client_ip):
             logger.warning(f"Registration rate limit exceeded for IP: {client_ip}")
             return render_form_error(
@@ -102,7 +88,7 @@ class AuthService:
             increment_registration_attempts(client_ip)
             return render_form_error(request, "register.html", name_error)
 
-        if is_email_registered(db, normalized_email):
+        if user_repo.email_exists(normalized_email):
             increment_registration_attempts(client_ip)
             return render_form_error(
                 request,
@@ -111,11 +97,11 @@ class AuthService:
             )
 
         try:
-            user = create_user(db, normalized_email, password, full_name)
+            user = user_repo.create(normalized_email, password, full_name)
             logger.info(f"User registered successfully: {normalized_email}")
             return RedirectResponse("/login?registered=true", status_code=303)
         
-        except EmailAlreadyExistsError:
+        except ValueError:
             increment_registration_attempts(client_ip)
             return render_form_error(
                 request,
@@ -123,22 +109,13 @@ class AuthService:
                 "Email already registered"
             )
         
-        except UserCreationError as e:
+        except Exception as e:
             logger.error(f"User creation error for {normalized_email}: {e}")
             increment_registration_attempts(client_ip)
             return render_form_error(
                 request,
                 "register.html",
                 "Registration error. Try again later"
-            )
-        
-        except Exception as e:
-            logger.error(f"Unexpected registration error for {normalized_email}: {e}")
-            increment_registration_attempts(client_ip)
-            return render_form_error(
-                request,
-                "register.html",
-                "Unexpected error. Try again later"
             )
     
     async def login_user(
@@ -148,6 +125,8 @@ class AuthService:
         email: str,
         password: str
     ) -> Response:
+        user_repo = UserRepository(db)
+        
         normalized_email = normalize_and_validated_email(email)
         if not normalized_email:
             return render_form_error(
@@ -166,7 +145,7 @@ class AuthService:
                 "Too many login attempts"
             )
         
-        user = verify_user_password(db, email, password)
+        user = user_repo.verify_credentials(email, password)
         
         if not user:
             increment_rate_limit(login_key)
