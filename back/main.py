@@ -13,12 +13,14 @@ from .routes.auth import router as auth_router
 from .routes.main import router as main_router
 from .routes.market import router as market_router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_tables()
     logger.info("Application started successfully")
     yield
     logger.info("Application shutting down")
+
 
 app = FastAPI(lifespan=lifespan)
 

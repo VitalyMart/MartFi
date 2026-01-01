@@ -18,17 +18,12 @@ async def root(
 ):
     if not current_user:
         return RedirectResponse("/login")
-    
+
     data = await main_service.get_main_page_data(request, current_user)
-    
+
     if not data:
         return RedirectResponse("/login")
-    
+
     return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "user": data.user,
-            "csrf_token": data.csrf_token
-        }
+        "index.html", {"request": request, "user": data.user, "csrf_token": data.csrf_token}
     )

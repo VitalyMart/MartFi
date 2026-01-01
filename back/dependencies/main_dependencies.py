@@ -1,7 +1,7 @@
 from fastapi import Depends
 from ..contracts.security import ISecurityService
 from ..services.main_service import MainService
-from .common import get_security_service 
+from .common import get_security_service
 
 
 async def get_main_service(

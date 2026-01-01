@@ -9,16 +9,16 @@ from ...core.logger import logger
 class UserRepository:
     def __init__(self, db: Session):
         self.db = db
-    
+
     def get_by_id(self, user_id: int) -> Optional[User]:
         return self.db.query(User).filter(User.id == user_id).first()
-    
+
     def get_by_email(self, email: str) -> Optional[User]:
         return self.db.query(User).filter(User.email == email).first()
-    
+
     def email_exists(self, email: str) -> bool:
         return self.get_by_email(email) is not None
-    
+
     def create(self, email: str, password: str, full_name: str) -> User:
         try:
             hashed_password = get_password_hash(password)
@@ -40,7 +40,7 @@ class UserRepository:
             self.db.rollback()
             logger.error(f"Error creating user {email}: {e}")
             raise RuntimeError(f"Failed to create user: {str(e)}")
-    
+
     def verify_credentials(self, email: str, password: str) -> Optional[User]:
         user = self.get_by_email(email)
         if not user:

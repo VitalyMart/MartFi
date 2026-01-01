@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def get_db():
     db = SessionLocal()
     try:
@@ -25,6 +26,7 @@ def get_db():
         raise
     finally:
         db.close()
+
 
 def create_tables():
     Base.metadata.create_all(bind=engine)

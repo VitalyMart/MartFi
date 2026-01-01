@@ -8,7 +8,7 @@ from ..auth.exceptions import (
     RateLimitException,
     InvalidCredentialsException,
     UserAlreadyExistsException,
-    ValidationException
+    ValidationException,
 )
 from ..templates import templates
 from ..utils import render_form_error
@@ -32,10 +32,7 @@ async def login_page(
     if context_result.redirect_path:
         return RedirectResponse(context_result.redirect_path)
 
-    return templates.TemplateResponse(
-        context_result.template_name,
-        context_result.template_data
-    )
+    return templates.TemplateResponse(context_result.template_name, context_result.template_data)
 
 
 @router.get("/register")
@@ -49,10 +46,7 @@ async def register_page(
     if context_result.redirect_path:
         return RedirectResponse(context_result.redirect_path)
 
-    return templates.TemplateResponse(
-        context_result.template_name,
-        context_result.template_data
-    )
+    return templates.TemplateResponse(context_result.template_name, context_result.template_data)
 
 
 @router.post("/register")
@@ -68,10 +62,7 @@ async def register(
 
     try:
         result: RegistrationResult = await auth_service.register_user(
-            email=email,
-            password=password,
-            full_name=full_name,
-            client_ip=client_ip
+            email=email, password=password, full_name=full_name, client_ip=client_ip
         )
     except RateLimitException as e:
         return render_form_error(request, "register.html", str(e))
@@ -81,16 +72,9 @@ async def register(
         return render_form_error(request, "register.html", str(e))
     except Exception as e:
         logger.error(f"Registration error: {e}")
-        return render_form_error(
-            request,
-            "register.html",
-            "Registration error. Try again later"
-        )
+        return render_form_error(request, "register.html", "Registration error. Try again later")
 
-    return RedirectResponse(
-        result.redirect_path or "/login?registered=true",
-        status_code=303
-    )
+    return RedirectResponse(result.redirect_path or "/login?registered=true", status_code=303)
 
 
 @router.post("/login")
@@ -104,22 +88,14 @@ async def login(
     client_ip = request.client.host
 
     try:
-        result: LoginResult = await auth_service.login_user(
-            email=email,
-            password=password,
-            client_ip=client_ip
-        )
+        result: LoginResult = await auth_service.login_user(email=email, password=password, client_ip=client_ip)
     except RateLimitException as e:
         return render_form_error(request, "login.html", str(e))
     except InvalidCredentialsException as e:
         return render_form_error(request, "login.html", str(e))
     except Exception as e:
         logger.error(f"Login error: {e}")
-        return render_form_error(
-            request,
-            "login.html",
-            "Login error. Try again later"
-        )
+        return render_form_error(request, "login.html", "Login error. Try again later")
 
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(
@@ -129,7 +105,7 @@ async def login(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=not settings.DEBUG,
         samesite="lax",
-        path="/"
+        path="/",
     )
 
     return response
@@ -151,12 +127,6 @@ async def logout(
     request.session.clear()
 
     response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie(
-        key="access_token",
-        httponly=True,
-        secure=not settings.DEBUG,
-        samesite="lax",
-        path="/"
-    )
+    response.delete_cookie(key="access_token", httponly=True, secure=not settings.DEBUG, samesite="lax", path="/")
 
     return response

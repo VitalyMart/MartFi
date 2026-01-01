@@ -23,11 +23,11 @@ def generate_csrf_token() -> str:
 def validate_csrf_token(token: str, request: Request) -> bool:
     stored_token = request.session.get("csrf_token")
     referer = request.headers.get("referer")
-    
+
     if referer and not referer.startswith(str(request.base_url)):
         logger.warning(f"Invalid Referer header: {referer}")
         return False
-    
+
     return bool(stored_token and hmac.compare_digest(token, stored_token))
 
 
@@ -61,33 +61,33 @@ def validate_password(password: str) -> Tuple[bool, str]:
 
 def verify_user_password(db: Session, email: str, password: str):
     start_time = time.time()
-    
+
     user = db.query(User).filter(User.email == email).first()
-    
+
     fake_hash = generate_fake_hash()
     provided_hash = user.hashed_password if user else fake_hash
-    
+
     is_valid = pwd_context.verify(password, provided_hash)
-    
+
     execution_time = time.time() - start_time
     fixed_delay = 0.05
-    
+
     if execution_time < fixed_delay:
         time.sleep(fixed_delay - execution_time)
-    
+
     return user if (user and is_valid) else None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     start_time = time.time()
     is_valid = pwd_context.verify(plain_password, hashed_password)
-    
+
     execution_time = time.time() - start_time
     fixed_delay = 0.5
-    
+
     if execution_time < fixed_delay:
         time.sleep(fixed_delay - execution_time)
-    
+
     return is_valid
 
 

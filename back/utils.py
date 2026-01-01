@@ -11,9 +11,5 @@ def render_form_error(
     csrf_token = get_csrf_token(request)
     return templates.TemplateResponse(
         template_name,
-        {
-            "request": request,
-            "error": error,
-            "csrf_token": csrf_token
-        },
+        {"request": request, "error": error, "csrf_token": csrf_token},
     )

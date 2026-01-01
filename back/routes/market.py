@@ -17,14 +17,16 @@ async def assets_page(
     market_service: MarketService = Depends(get_market_service),
     current_user: User = Depends(get_current_user),
     search: Optional[str] = Query("", description="Поисковый запрос"),
-    sort_by: Optional[str] = Query("name", description="Поле для сортировки (name, ticker, price, change, change_percent, volume)"),
+    sort_by: Optional[str] = Query(
+        "name", description="Поле для сортировки (name, ticker, price, change, change_percent, volume)"
+    ),
     sort_order: Optional[str] = Query("asc", description="Порядок сортировки (asc, desc)"),
     page: Optional[int] = Query(1, ge=1, description="Номер страницы"),
     page_size: Optional[int] = Query(50, ge=1, le=200, description="Размер страницы"),
 ):
     if not current_user:
         return RedirectResponse("/login")
-    
+
     data = await market_service.get_market_page_data(
         request=request,
         current_user=current_user,
@@ -32,12 +34,12 @@ async def assets_page(
         sort_by=sort_by,
         sort_order=sort_order,
         page=page,
-        page_size=page_size
+        page_size=page_size,
     )
-    
+
     if not data:
         return RedirectResponse("/login")
-    
+
     return templates.TemplateResponse(
         "market.html",
         {
@@ -50,26 +52,23 @@ async def assets_page(
             "sort_order": data.sort_order,
             "page": data.page,
             "total_pages": data.total_pages,
-            "total_count": data.total_count
-        }
+            "total_count": data.total_count,
+        },
     )
 
 
 @router.get("/api/market/test")
-async def moex_test(
-    market_service: MarketService = Depends(get_market_service)
-):
+async def moex_test(market_service: MarketService = Depends(get_market_service)):
     return await market_service.get_moex_test_data()
 
 
 @router.post("/api/market/refresh")
 async def refresh_market_data(
-    market_service: MarketService = Depends(get_market_service),
-    current_user: User = Depends(get_current_user)
+    market_service: MarketService = Depends(get_market_service), current_user: User = Depends(get_current_user)
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     return await market_service.refresh_cache()
 
 
@@ -81,22 +80,13 @@ async def get_stocks_api(
     sort_order: Optional[str] = Query("asc", description="Порядок сортировки"),
     page: Optional[int] = Query(1, ge=1, description="Номер страницы"),
     page_size: Optional[int] = Query(50, ge=1, le=100, description="Размер страницы"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     data = await market_service.get_market_stocks_data(
-        search=search,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        page=page,
-        page_size=page_size
+        search=search, sort_by=sort_by, sort_order=sort_order, page=page, page_size=page_size
     )
-    
-    return {
-        "success": True,
-        "data": data.stocks,
-        "pagination": data.pagination,
-        "filters": data.filters
-    }
+
+    return {"success": True, "data": data.stocks, "pagination": data.pagination, "filters": data.filters}
