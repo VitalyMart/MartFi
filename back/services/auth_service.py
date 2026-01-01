@@ -1,7 +1,13 @@
 from typing import Optional
-from fastapi import Request, Response
-from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+
+from ..auth.dto import RegistrationResult, LoginResult, LogoutResult, PageContextResult
+from ..auth.exceptions import (
+    RateLimitException,
+    InvalidCredentialsException,
+    UserAlreadyExistsException,
+    ValidationException
+)
 from ..database.models import User
 from ..database.repositories.user_repository import UserRepository
 from ..contracts.security import ISecurityService
@@ -19,146 +25,131 @@ from ..core import (
 )
 from ..core.logger import logger
 from ..config import settings
-from ..utils import render_form_error
 
 
 class AuthService:
-    def __init__(self, security_service: ISecurityService):
+    def __init__(
+        self,
+        security_service: ISecurityService,
+        db_session: Session
+    ):
         self.security_service = security_service
-    
-    async def get_login_page_context(self, request: Request, current_user: Optional[User]) -> dict:
+        self.db_session = db_session
+        self.user_repository = UserRepository(db_session)
+
+    async def get_login_page_context(
+        self,
+        request,
+        current_user: Optional[User]
+    ) -> PageContextResult:
         if current_user:
-            return {"redirect": "/"}
+            return PageContextResult(
+                template_name="",
+                template_data={},
+                redirect_path="/"
+            )
+
         csrf_token = await self.security_service.get_csrf_token(request)
-        return {
-            "redirect": None,
-            "template_data": {
+
+        return PageContextResult(
+            template_name="login.html",
+            template_data={
                 "request": request,
                 "csrf_token": csrf_token,
             }
-        }
-    
-    async def get_register_page_context(self, request: Request, current_user: Optional[User]) -> dict:
+        )
+
+    async def get_register_page_context(
+        self,
+        request,
+        current_user: Optional[User]
+    ) -> PageContextResult:
         if current_user:
-            return {"redirect": "/"}
+            return PageContextResult(
+                template_name="",
+                template_data={},
+                redirect_path="/"
+            )
+
         csrf_token = await self.security_service.get_csrf_token(request)
-        return {
-            "redirect": None,
-            "template_data": {
+
+        return PageContextResult(
+            template_name="register.html",
+            template_data={
                 "request": request,
                 "csrf_token": csrf_token,
             }
-        }
-    
+        )
+
     async def register_user(
         self,
-        db: Session,
-        request: Request,
         email: str,
         password: str,
         full_name: str,
         client_ip: str
-    ) -> Response:
-        user_repo = UserRepository(db)
-        
+    ) -> RegistrationResult:
         if is_registration_rate_limited(client_ip):
             logger.warning(f"Registration rate limit exceeded for IP: {client_ip}")
-            return render_form_error(
-                request,
-                "register.html",
-                "Too many registration attempts. Try again later"
-            )
+            raise RateLimitException("Too many registration attempts. Try again later")
 
         normalized_email = normalize_and_validated_email(email)
         if not normalized_email:
             increment_registration_attempts(client_ip)
-            return render_form_error(
-                request,
-                "register.html",
-                "Invalid email format"
-            )
+            raise ValidationException("Invalid email format")
 
         is_valid_pass, pass_error = validate_password(password)
         if not is_valid_pass:
             increment_registration_attempts(client_ip)
-            return render_form_error(request, "register.html", pass_error)
+            raise ValidationException(pass_error)
 
         is_valid_name, name_error = validate_full_name(full_name)
         if not is_valid_name:
             increment_registration_attempts(client_ip)
-            return render_form_error(request, "register.html", name_error)
+            raise ValidationException(name_error)
 
-        if user_repo.email_exists(normalized_email):
+        if self.user_repository.email_exists(normalized_email):
             increment_registration_attempts(client_ip)
-            return render_form_error(
-                request,
-                "register.html",
-                "Email already registered"
-            )
+            raise UserAlreadyExistsException("Email already registered")
 
         try:
-            user = user_repo.create(normalized_email, password, full_name)
+            user = self.user_repository.create(normalized_email, password, full_name)
             logger.info(f"User registered successfully: {normalized_email}")
-            return RedirectResponse("/login?registered=true", status_code=303)
-        
-        except ValueError:
-            increment_registration_attempts(client_ip)
-            return render_form_error(
-                request,
-                "register.html",
-                "Email already registered"
+
+            return RegistrationResult(
+                success=True,
+                user_id=user.id,
+                redirect_path="/login?registered=true"
             )
-        
+
         except Exception as e:
             logger.error(f"User creation error for {normalized_email}: {e}")
             increment_registration_attempts(client_ip)
-            return render_form_error(
-                request,
-                "register.html",
-                "Registration error. Try again later"
-            )
-    
+            raise
+
     async def login_user(
         self,
-        db: Session,
-        request: Request,
         email: str,
-        password: str
-    ) -> Response:
-        user_repo = UserRepository(db)
-        
+        password: str,
+        client_ip: str
+    ) -> LoginResult:
         normalized_email = normalize_and_validated_email(email)
         if not normalized_email:
-            return render_form_error(
-                request,
-                "login.html",
-                "Invalid email or password"
-            )
-        
+            raise InvalidCredentialsException("Invalid email or password")
+
         login_key = get_login_rate_key(normalized_email)
-        
         if is_rate_limited(login_key):
             logger.warning(f"Login rate limit exceeded for: {email}")
-            return render_form_error(
-                request,
-                "login.html",
-                "Too many login attempts"
-            )
-        
-        user = user_repo.verify_credentials(email, password)
-        
+            raise RateLimitException("Too many login attempts")
+
+        user = self.user_repository.verify_credentials(email, password)
         if not user:
             increment_rate_limit(login_key)
             logger.warning(f"Failed login attempt for: {email}")
-            return render_form_error(
-                request,
-                "login.html",
-                "Invalid email or password"
-            )
-        
+            raise InvalidCredentialsException("Invalid email or password")
+
         clear_rate_limit(login_key)
         access_token = create_access_token(user.id)
-        
+
         try:
             redis_client.setex(
                 f"session:{user.id}",
@@ -167,28 +158,24 @@ class AuthService:
             )
         except Exception as e:
             logger.error(f"Redis error storing session: {e}")
-        
+
         logger.info(f"User logged in successfully: {email}")
-        response = RedirectResponse("/", status_code=303)
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            secure=not settings.DEBUG,
-            samesite="lax",
-            path="/"
+
+        return LoginResult(
+            success=True,
+            user_id=user.id,
+            access_token=access_token
         )
-        return response
-    
+
     async def logout_user(
         self,
-        request: Request
-    ) -> Response:
-        token = request.cookies.get("access_token")
-        if token:
+        access_token: Optional[str]
+    ) -> LogoutResult:
+        user_id = None
+
+        if access_token:
             try:
-                payload = verify_token(token)
+                payload = verify_token(access_token)
                 if payload and payload.get("sub"):
                     user_id = payload.get("sub")
                     try:
@@ -198,14 +185,9 @@ class AuthService:
                         logger.error(f"Redis error during logout: {e}")
             except Exception as e:
                 logger.error(f"Error during token cleanup: {e}")
-        
-        request.session.clear()
-        response = RedirectResponse("/login", status_code=303)
-        response.delete_cookie(
-            key="access_token",
-            httponly=True,
-            secure=not settings.DEBUG,
-            samesite="lax",
-            path="/"
+
+        return LogoutResult(
+            success=True,
+            session_cleared=True,
+            user_id=user_id
         )
-        return response

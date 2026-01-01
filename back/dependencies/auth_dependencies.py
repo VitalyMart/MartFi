@@ -8,11 +8,15 @@ from ..database.models import User
 from ..database import get_db
 from .common import get_security_service  
 
-async def get_auth_service(
+def get_auth_service(
+    db: Session = Depends(get_db),
     security_service: ISecurityService = Depends(get_security_service),
 ) -> AuthService:
-    return AuthService(security_service=security_service)
-
+    return AuthService(
+        security_service=security_service,
+        db_session=db
+    )
+    
 async def get_auth_context_service(
     auth_service: AuthService = Depends(get_auth_service),
     current_user: User = Depends(get_current_user),
@@ -31,3 +35,4 @@ async def get_auth_processor_service(
     db: Session = Depends(get_db),
 ) -> tuple:
     return auth_service, db
+

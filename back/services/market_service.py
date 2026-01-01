@@ -2,14 +2,13 @@ import aiohttp
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import Request
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
 
 from ..core import redis_client
 from ..core.logger import logger
 from ..contracts.security import ISecurityService
-from ..templates import templates
+from ..services.dto import MarketPageData, MarketStocksData
+from ..config import settings
+
 
 class MarketService:
     def __init__(self, security_service: ISecurityService):
@@ -17,58 +16,78 @@ class MarketService:
         self.moex_base_url = "https://iss.moex.com/iss"
         self.cache_ttl = 300  
     
-    async def get_market_page_context(
+    async def get_market_page_data(
         self,
-        request: Request,
+        request,
         current_user: Any,
         search: str = "",
         sort_by: str = "name",
         sort_order: str = "asc",
         page: int = 1,
         page_size: int = 50
-    ) -> Dict[str, Any]:
-
-        
+    ) -> Optional[MarketPageData]:
         if not current_user:
-            return RedirectResponse("/login")
+            return None
         
         csrf_token = await self.security_service.get_csrf_token(request)
         
-        
         all_stocks = await self.get_cached_stocks()
-        
-        
         filtered_stocks = self._filter_stocks(all_stocks, search)
         sorted_stocks = self._sort_stocks(filtered_stocks, sort_by, sort_order)
-        
         
         total_count = len(sorted_stocks)
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         paginated_stocks = sorted_stocks[start_idx:end_idx]
         
-        return templates.TemplateResponse(
-            "market.html",
-            {
-                "request": request,
-                "user": current_user,
-                "csrf_token": csrf_token,
-                "stocks": paginated_stocks,
-                "search_query": search,
-                "sort_by": sort_by,
-                "sort_order": sort_order,
+        return MarketPageData(
+            user=current_user,
+            csrf_token=csrf_token,
+            stocks=paginated_stocks,
+            search_query=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            page=page,
+            total_pages=(total_count + page_size - 1) // page_size,
+            total_count=total_count
+        )
+    
+    async def get_market_stocks_data(
+        self,
+        search: str = "",
+        sort_by: str = "name",
+        sort_order: str = "asc",
+        page: int = 1,
+        page_size: int = 50
+    ) -> MarketStocksData:
+        all_stocks = await self.get_cached_stocks()
+        filtered_stocks = self._filter_stocks(all_stocks, search)
+        sorted_stocks = self._sort_stocks(filtered_stocks, sort_by, sort_order)
+        
+        total_count = len(sorted_stocks)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_stocks = sorted_stocks[start_idx:end_idx]
+        
+        return MarketStocksData(
+            stocks=paginated_stocks,
+            pagination={
                 "page": page,
-                "total_pages": (total_count + page_size - 1) // page_size,
-                "total_count": total_count
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": (total_count + page_size - 1) // page_size
+            },
+            filters={
+                "search": search,
+                "sort_by": sort_by,
+                "sort_order": sort_order
             }
         )
     
     async def get_cached_stocks(self) -> List[Dict[str, Any]]:
-        """Получает акции из кэша или API MOEX"""
         cache_key = "moex:stocks"
         
         try:
-            
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 stocks = json.loads(cached_data)
@@ -77,9 +96,7 @@ class MarketService:
         except Exception as e:
             logger.error(f"Error reading from cache: {e}")
         
-        
         stocks = await self._fetch_all_stocks()
-        
         
         try:
             redis_client.setex(cache_key, self.cache_ttl, json.dumps(stocks))
@@ -90,12 +107,10 @@ class MarketService:
         return stocks
     
     async def _fetch_all_stocks(self) -> List[Dict[str, Any]]:
-        """Получает все акции с MOEX"""
         try:
             url = f"{self.moex_base_url}/engines/stock/markets/shares/boards/TQBR/securities.json"
             
             async with aiohttp.ClientSession() as session:
-                
                 securities_params = {
                     'iss.meta': 'off',
                     'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE'
@@ -104,11 +119,10 @@ class MarketService:
                 async with session.get(url, params=securities_params) as response:
                     if response.status != 200:
                         logger.error(f"MOEX API error: {response.status}")
-                        return self._get_fallback_stocks()
+                        return []
                     
                     data = await response.json()
                     securities = data.get('securities', {}).get('data', [])
-                
                 
                 marketdata_params = {
                     'iss.meta': 'off',
@@ -124,7 +138,6 @@ class MarketService:
                     marketdata = await response.json()
                     market_data = marketdata.get('marketdata', {}).get('data', [])
                 
-                
                 market_dict = {}
                 for item in market_data:
                     if item and len(item) >= 7:
@@ -137,7 +150,6 @@ class MarketService:
                             'volume': float(item[5]) if item[5] is not None else 0,
                             'update_time': item[6] if len(item) > 6 else None
                         }
-                
                 
                 result = []
                 for security in securities[:500]:  
@@ -181,13 +193,12 @@ class MarketService:
                 
         except aiohttp.ClientError as e:
             logger.error(f"Network error fetching MOEX data: {e}")
-            return self._get_fallback_stocks()
+            return []
         except Exception as e:
             logger.error(f"Error fetching stocks: {e}")
-            return self._get_fallback_stocks()
+            return []
     
     def _parse_securities_only(self, securities: List) -> List[Dict[str, Any]]:
-        """Парсит только данные о бумагах без рыночных данных"""
         result = []
         for security in securities[:200]:
             if not security or len(security) < 3:
@@ -211,88 +222,7 @@ class MarketService:
         
         return result
     
-    def _get_fallback_stocks(self) -> List[Dict[str, Any]]:
-        """Возвращает тестовые данные если MOEX недоступен"""
-        return [
-            {
-                'ticker': 'SBER',
-                'name': 'Сбербанк',
-                'full_name': 'Сбербанк России ПАО ао',
-                'price': 300.50,
-                'change': 5.20,
-                'open_price': 295.30,
-                'change_percent': 1.73,
-                'volume': 15000000,
-                'update_time': '10:30:45',
-                'isin': 'RU0009029540',
-                'regnumber': '1-01-00100-A',
-                'lotsize': 10,
-                'last_updated': datetime.now().isoformat()
-            },
-            {
-                'ticker': 'GAZP',
-                'name': 'Газпром',
-                'full_name': 'Газпром ПАО ао',
-                'price': 180.30,
-                'change': -2.10,
-                'open_price': 182.40,
-                'change_percent': -1.15,
-                'volume': 8000000,
-                'update_time': '10:31:20',
-                'isin': 'RU0007661625',
-                'regnumber': '1-02-00028-A',
-                'lotsize': 10,
-                'last_updated': datetime.now().isoformat()
-            },
-            {
-                'ticker': 'VTBR',
-                'name': 'ВТБ',
-                'full_name': 'ВТБ Банк ПАО ао',
-                'price': 0.027,
-                'change': 0.001,
-                'open_price': 0.026,
-                'change_percent': 3.85,
-                'volume': 500000000,
-                'update_time': '10:32:15',
-                'isin': 'RU000A0JP5V6',
-                'regnumber': '1-01-00106-D',
-                'lotsize': 10000,
-                'last_updated': datetime.now().isoformat()
-            },
-            {
-                'ticker': 'LKOH',
-                'name': 'ЛУКОЙЛ',
-                'full_name': 'ЛУКОЙЛ ПАО ао',
-                'price': 7500.00,
-                'change': 150.00,
-                'open_price': 7350.00,
-                'change_percent': 2.04,
-                'volume': 500000,
-                'update_time': '10:33:00',
-                'isin': 'RU0009024277',
-                'regnumber': '1-01-00056-A',
-                'lotsize': 1,
-                'last_updated': datetime.now().isoformat()
-            },
-            {
-                'ticker': 'YNDX',
-                'name': 'Яндекс',
-                'full_name': 'Яндекс Н.В. ао',
-                'price': 3500.00,
-                'change': -50.00,
-                'open_price': 3550.00,
-                'change_percent': -1.41,
-                'volume': 200000,
-                'update_time': '10:34:30',
-                'isin': 'NL0009805522',
-                'regnumber': '1-01-55078-E',
-                'lotsize': 1,
-                'last_updated': datetime.now().isoformat()
-            }
-        ]
-    
     def _filter_stocks(self, stocks: List[Dict[str, Any]], search: str) -> List[Dict[str, Any]]:
-        """Фильтрует акции по поисковому запросу"""
         if not search:
             return stocks
         
@@ -306,7 +236,6 @@ class MarketService:
         ]
     
     def _sort_stocks(self, stocks: List[Dict[str, Any]], sort_by: str, sort_order: str) -> List[Dict[str, Any]]:
-        """Сортирует акции"""
         if not stocks:
             return stocks
         
@@ -328,7 +257,6 @@ class MarketService:
             return stocks
     
     async def refresh_cache(self) -> Dict[str, Any]:
-        """Принудительно обновляет кэш"""
         try:
             stocks = await self._fetch_all_stocks()
             cache_key = "moex:stocks"
@@ -348,7 +276,6 @@ class MarketService:
             }
     
     async def get_moex_test_data(self) -> Dict[str, Any]:
-        """Тестовый эндпоинт для проверки API MOEX"""
         try:
             stocks = await self._fetch_all_stocks()
             return {
