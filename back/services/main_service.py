@@ -1,7 +1,7 @@
 from typing import Optional
 from ..database.models import User
 from ..contracts.security import ISecurityService
-from ..services.dto import MainPageData
+from ..dto.market import MainPageData
 
 
 class MainService:

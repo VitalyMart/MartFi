@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from ..core import redis_client
 from ..core.logger import logger
 from ..contracts.security import ISecurityService
-from ..services.dto import MarketPageData, MarketStocksData
+from ..dto.market import MarketPageData, MarketStocksData
 from ..config import settings
 
 

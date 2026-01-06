@@ -1,17 +1,15 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
-from ..database.models import User
-
+from ..auth.entities.user import User as DomainUser
 
 @dataclass
 class MainPageData:
-    user: User
+    user: DomainUser
     csrf_token: str
-
 
 @dataclass
 class MarketPageData:
-    user: User
+    user: DomainUser
     csrf_token: str
     stocks: List[Dict[str, Any]]
     search_query: str
@@ -20,7 +18,6 @@ class MarketPageData:
     page: int
     total_pages: int
     total_count: int
-
 
 @dataclass
 class MarketStocksData:
