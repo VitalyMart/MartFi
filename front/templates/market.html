@@ -13,15 +13,15 @@
 
 <div class="market-tabs">
     <div class="tabs-header">
-        <button class="tab-btn active" data-tab="stocks">Акции</button>
-        <button class="tab-btn" data-tab="bonds">Облигации</button>
-        <button class="tab-btn" data-tab="funds">Фонды</button>
-        <button class="tab-btn" data-tab="currency">Валюта</button>
-        <button class="tab-btn" data-tab="indices">Индексы</button>
+        <button class="tab-btn {% if asset_type == 'stock' %}active{% endif %}" data-tab="stock">Акции</button>
+        <button class="tab-btn {% if asset_type == 'bonds' %}active{% endif %}" data-tab="bonds">Облигации</button>
+        <button class="tab-btn {% if asset_type == 'funds' %}active{% endif %}" data-tab="funds">Фонды</button>
+        <button class="tab-btn {% if asset_type == 'currency' %}active{% endif %}" data-tab="currency">Валюта</button>
+        <button class="tab-btn {% if asset_type == 'indices' %}active{% endif %}" data-tab="indices">Индексы</button>
     </div>
 
     <div class="market-controls">
-        <form method="get" action="/market" class="search-form">
+        <form method="get" action="/market/{{ asset_type }}" class="search-form" id="searchForm">
             <div class="search-container">
                 <input type="text" class="search-input" name="search" value="{{ search_query }}" 
                        placeholder="Поиск по названию или тикеру...">
@@ -32,15 +32,17 @@
         </form>
         
         <div class="sort-container">
-            <form method="get" action="/market" class="sort-form">
+            <form method="get" action="/market/{{ asset_type }}" class="sort-form" id="sortForm">
                 <input type="hidden" name="search" value="{{ search_query }}">
-                <select name="sort_by" class="sort-select" onchange="this.form.submit()">
+                <select name="sort_by" class="sort-select" id="sortBySelect">
                     <option value="name" {% if sort_by == 'name' %}selected{% endif %}>По названию</option>
                     <option value="ticker" {% if sort_by == 'ticker' %}selected{% endif %}>По тикеру</option>
                     <option value="price" {% if sort_by == 'price' %}selected{% endif %}>По цене</option>
-                    <option value="change" {% if sort_by == 'change' %}selected{% endif %}>По изменению</option>
+                    {% if asset_type == 'bonds' %}
+                    <option value="yield" {% if sort_by == 'yield' %}selected{% endif %}>По доходности</option>
+                    {% endif %}
                 </select>
-                <select name="sort_order" class="sort-order-select" onchange="this.form.submit()">
+                <select name="sort_order" class="sort-order-select" id="sortOrderSelect">
                     <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
                     <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
                 </select>
@@ -49,9 +51,9 @@
     </div>
 
     <div class="tabs-content">
-        <div class="tab-pane active" id="stocks">
+        <div class="tab-pane {% if asset_type == 'stock' %}active{% endif %}" id="stock">
             <div class="assets-list">
-                {% if stocks %}
+                {% if stocks and asset_type == 'stock' %}
                     <div class="stocks-info">
                         <p>Найдено акций: {{ total_count }}</p>
                     </div>
@@ -63,9 +65,6 @@
                                 <p class="stock-ticker">{{ stock.ticker }}</p>
                                 {% if stock.full_name %}
                                 <p class="stock-fullname">{{ stock.full_name|truncate(60) }}</p>
-                                {% endif %}
-                                {% if stock.sector %}
-                                <p class="stock-sector">{{ stock.sector }}</p>
                                 {% endif %}
                             </div>
                             <div class="price-section">
@@ -94,18 +93,22 @@
                     {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
-                            <a href="/market?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                            <a href="/market/stock?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                                class="page-btn">← Назад</a>
                         {% endif %}
                         
                         <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
                         
                         {% if page < total_pages %}
-                            <a href="/market?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                            <a href="/market/stock?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                                class="page-btn">Вперед →</a>
                         {% endif %}
                     </div>
                     {% endif %}
+                {% elif asset_type != 'stock' %}
+                    <div class="no-data">
+                        <p>Загрузка данных...</p>
+                    </div>
                 {% else %}
                     <div class="no-data">
                         <p>Не удалось загрузить данные по акциям</p>
@@ -117,15 +120,89 @@
             </div>
         </div>
 
-        <div class="tab-pane" id="bonds">
+        <div class="tab-pane {% if asset_type == 'bonds' %}active{% endif %}" id="bonds">
             <div class="assets-list">
-                <div class="no-data">
-                    <p>Данные по облигациям будут добавлены позже</p>
-                </div>
+                {% if stocks and asset_type == 'bonds' %}
+                    <div class="stocks-info">
+                        <p>Найдено облигаций: {{ total_count }}</p>
+                    </div>
+                    {% for bond in stocks %}
+                    <div class="bond-card">
+                        <div class="bond-info">
+                            <div>
+                                <h3 class="bond-name">{{ bond.name }}</h3>
+                                <p class="bond-ticker">{{ bond.ticker }}</p>
+                                {% if bond.full_name %}
+                                <p class="bond-fullname">{{ bond.full_name|truncate(60) }}</p>
+                                {% endif %}
+                                <div class="bond-details">
+                                    {% if bond.maturity_date %}
+                                    <span class="bond-maturity">Погашение: {{ bond.maturity_date[:10] }}</span>
+                                    {% endif %}
+                                    {% if bond.coupon_value > 0 %}
+                                    <span class="bond-coupon">Купон: {{ "%.2f"|format(bond.coupon_value) }}%</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="price-section">
+                                <div class="bond-price">
+                                    {% if bond.price > 0 %}
+                                        {{ "%.2f"|format(bond.price) }} руб.
+                                    {% else %}
+                                        Нет данных
+                                    {% endif %}
+                                </div>
+                                {% if bond.yield > 0 %}
+                                <div class="bond-yield positive">
+                                    Доходность: {{ "%.2f"|format(bond.yield) }}%
+                                </div>
+                                {% endif %}
+                                <div class="bond-change 
+                                    {% if bond.change > 0 %}positive
+                                    {% elif bond.change < 0 %}negative{% endif %}">
+                                    {% if bond.change > 0 %}+{% endif %}
+                                    {% if bond.change != 0 %}
+                                        {{ "%.2f"|format(bond.change) }} руб.
+                                    {% else %}
+                                        0.00 руб.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if total_pages > 1 %}
+                    <div class="pagination">
+                        {% if page > 1 %}
+                            <a href="/market/bonds?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">← Назад</a>
+                        {% endif %}
+                        
+                        <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+                        
+                        {% if page < total_pages %}
+                            <a href="/market/bonds?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">Вперед →</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% elif asset_type != 'bonds' %}
+                    <div class="no-data">
+                        <p>Загрузка данных...</p>
+                    </div>
+                {% else %}
+                    <div class="no-data">
+                        <p>Не удалось загрузить данные по облигациям</p>
+                        {% if search_query %}
+                        <p>Попробуйте изменить поисковый запрос</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
 
-        <div class="tab-pane" id="funds">
+        <div class="tab-pane {% if asset_type == 'funds' %}active{% endif %}" id="funds">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по фондам будут добавлены позже</p>
@@ -133,7 +210,7 @@
             </div>
         </div>
 
-        <div class="tab-pane" id="currency">
+        <div class="tab-pane {% if asset_type == 'currency' %}active{% endif %}" id="currency">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по валюте будут добавлены позже</p>
@@ -141,7 +218,7 @@
             </div>
         </div>
 
-        <div class="tab-pane" id="indices">
+        <div class="tab-pane {% if asset_type == 'indices' %}active{% endif %}" id="indices">
             <div class="assets-list">
                 <div class="no-data">
                     <p>Данные по индексам будут добавлены позже</p>
