@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, Query, HTTPException
 from fastapi.responses import RedirectResponse
-from typing import Optional
+from urllib.parse import urlencode
 from ..services.market_service import MarketService
 from ..templates import templates
 from ..dependencies import get_market_service
@@ -10,21 +10,59 @@ from ..auth.entities.user import User as DomainUser
 router = APIRouter()
 
 @router.get("/market")
-async def assets_page(
+async def market_default(
     request: Request,
-    market_service: MarketService = Depends(get_market_service),
     current_user: DomainUser | None = Depends(get_current_user),
-    search: Optional[str] = Query("", description="Поисковый запрос"),
-    sort_by: Optional[str] = Query("name", description="Поле для сортировки"),
-    sort_order: Optional[str] = Query("asc", description="Порядок сортировки"),
-    page: Optional[int] = Query(1, ge=1, description="Номер страницы"),
-    page_size: Optional[int] = Query(50, ge=1, le=200, description="Размер страницы"),
+    search: str = Query(""),
+    sort_by: str = Query("name"),
+    sort_order: str = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
 ):
     if not current_user:
         return RedirectResponse("/login")
+    
+    params = {}
+    if search:
+        params["search"] = search
+    if sort_by != "name":
+        params["sort_by"] = sort_by
+    if sort_order != "asc":
+        params["sort_order"] = sort_order
+    if page != 1:
+        params["page"] = page
+    if page_size != 50:
+        params["page_size"] = page_size
+    
+    url = "/market/stock"
+    if params:
+        url += f"?{urlencode(params)}"
+    
+    return RedirectResponse(url, status_code=307)
+
+@router.get("/market/{asset_type}")
+async def assets_page(
+    request: Request,
+    asset_type: str,
+    market_service: MarketService = Depends(get_market_service),
+    current_user: DomainUser | None = Depends(get_current_user),
+    search: str = Query(""),
+    sort_by: str = Query("name"),
+    sort_order: str = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    if not current_user:
+        return RedirectResponse("/login")
+    
+    valid_asset_types = ["stock", "bonds", "funds", "currency", "indices"]
+    if asset_type not in valid_asset_types:
+        return RedirectResponse("/market/stock")
+    
     data = await market_service.get_market_page_data(
         request=request,
         current_user=current_user,
+        asset_type=asset_type,
         search=search,
         sort_by=sort_by,
         sort_order=sort_order,
@@ -46,35 +84,51 @@ async def assets_page(
             "page": data.page,
             "total_pages": data.total_pages,
             "total_count": data.total_count,
-        },
+            "asset_type": asset_type,
+        }
     )
 
-@router.get("/api/market/test")
-async def moex_test(market_service: MarketService = Depends(get_market_service)):
-    return await market_service.get_moex_test_data()
+@router.get("/api/market/test/{asset_type}")
+async def moex_test(
+    asset_type: str,
+    market_service: MarketService = Depends(get_market_service)
+):
+    return await market_service.get_moex_test_data(asset_type)
 
-@router.post("/api/market/refresh")
+@router.post("/api/market/refresh/{asset_type}")
 async def refresh_market_data(
+    asset_type: str,
     market_service: MarketService = Depends(get_market_service),
     current_user: DomainUser | None = Depends(get_current_user)
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await market_service.refresh_cache()
+    return await market_service.refresh_cache(asset_type)
 
-@router.get("/api/market/stocks")
+@router.get("/api/market/stocks/{asset_type}")
 async def get_stocks_api(
+    asset_type: str,
     market_service: MarketService = Depends(get_market_service),
-    search: Optional[str] = Query("", description="Поисковый запрос"),
-    sort_by: Optional[str] = Query("name", description="Поле для сортировки"),
-    sort_order: Optional[str] = Query("asc", description="Порядок сортировки"),
-    page: Optional[int] = Query(1, ge=1, description="Номер страницы"),
-    page_size: Optional[int] = Query(50, ge=1, le=100, description="Размер страницы"),
+    search: str = Query(""),
+    sort_by: str = Query("name"),
+    sort_order: str = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     current_user: DomainUser | None = Depends(get_current_user),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     data = await market_service.get_market_stocks_data(
-        search=search, sort_by=sort_by, sort_order=sort_order, page=page, page_size=page_size
+        asset_type=asset_type,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
     )
-    return {"success": True, "data": data.stocks, "pagination": data.pagination, "filters": data.filters}
+    return {
+        "success": True,
+        "data": data.stocks,
+        "pagination": data.pagination,
+        "filters": data.filters,
+    }
