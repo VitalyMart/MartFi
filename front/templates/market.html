@@ -40,6 +40,12 @@
                     <option value="price" {% if sort_by == 'price' %}selected{% endif %}>По цене</option>
                     {% if asset_type == 'bonds' %}
                     <option value="yield" {% if sort_by == 'yield' %}selected{% endif %}>По доходности</option>
+                    <option value="coupon_value" {% if sort_by == 'coupon_value' %}selected{% endif %}>По купону</option>
+                    <option value="maturity_date" {% if sort_by == 'maturity_date' %}selected{% endif %}>По дате погашения</option>
+                    {% endif %}
+                    {% if asset_type == 'indices' %}
+                    <option value="change_percent" {% if sort_by == 'change_percent' %}selected{% endif %}>По изменению %</option>
+                    <option value="volume" {% if sort_by == 'volume' %}selected{% endif %}>По объему</option>
                     {% endif %}
                 </select>
                 <select name="sort_order" class="sort-order-select" id="sortOrderSelect">
@@ -66,6 +72,9 @@
                                 {% if stock.full_name %}
                                 <p class="stock-fullname">{{ stock.full_name|truncate(60) }}</p>
                                 {% endif %}
+                                {% if stock.sector %}
+                                <span class="stock-sector">{{ stock.sector }}</span>
+                                {% endif %}
                             </div>
                             <div class="price-section">
                                 <div class="stock-price">
@@ -85,6 +94,14 @@
                                         0.00 руб.
                                     {% endif %}
                                 </div>
+                                {% if stock.change_percent != 0 %}
+                                <div class="stock-change-percent 
+                                    {% if stock.change_percent > 0 %}positive
+                                    {% elif stock.change_percent < 0 %}negative{% endif %}">
+                                    {% if stock.change_percent > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(stock.change_percent) }}%
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -142,6 +159,9 @@
                                     {% if bond.coupon_value > 0 %}
                                     <span class="bond-coupon">Купон: {{ "%.2f"|format(bond.coupon_value) }}%</span>
                                     {% endif %}
+                                    {% if bond.currency %}
+                                    <span class="bond-currency">Валюта: {{ bond.currency }}</span>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="price-section">
@@ -167,6 +187,14 @@
                                         0.00 руб.
                                     {% endif %}
                                 </div>
+                                {% if bond.change_percent != 0 %}
+                                <div class="bond-change-percent 
+                                    {% if bond.change_percent > 0 %}positive
+                                    {% elif bond.change_percent < 0 %}negative{% endif %}">
+                                    {% if bond.change_percent > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(bond.change_percent) }}%
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -204,9 +232,86 @@
 
         <div class="tab-pane {% if asset_type == 'funds' %}active{% endif %}" id="funds">
             <div class="assets-list">
-                <div class="no-data">
-                    <p>Данные по фондам будут добавлены позже</p>
-                </div>
+                {% if stocks and asset_type == 'funds' %}
+                    <div class="stocks-info">
+                        <p>Найдено фондов: {{ total_count }}</p>
+                    </div>
+                    {% for fund in stocks %}
+                    <div class="fund-card">
+                        <div class="fund-info">
+                            <div>
+                                <h3 class="fund-name">{{ fund.name }}</h3>
+                                <p class="fund-ticker">{{ fund.ticker }}</p>
+                                {% if fund.full_name %}
+                                <p class="fund-fullname">{{ fund.full_name|truncate(60) }}</p>
+                                {% endif %}
+                                {% if fund.isin %}
+                                <div class="fund-details">
+                                    <span class="fund-isin">ISIN: {{ fund.isin }}</span>
+                                    {% if fund.lotsize and fund.lotsize > 1 %}
+                                    <span class="fund-lotsize">Лот: {{ fund.lotsize }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="price-section">
+                                <div class="fund-price">
+                                    {% if fund.price > 0 %}
+                                        {{ "%.2f"|format(fund.price) }} руб.
+                                    {% else %}
+                                        Нет данных
+                                    {% endif %}
+                                </div>
+                                <div class="fund-change 
+                                    {% if fund.change > 0 %}positive
+                                    {% elif fund.change < 0 %}negative{% endif %}">
+                                    {% if fund.change > 0 %}+{% endif %}
+                                    {% if fund.change != 0 %}
+                                        {{ "%.2f"|format(fund.change) }} руб.
+                                    {% else %}
+                                        0.00 руб.
+                                    {% endif %}
+                                </div>
+                                {% if fund.change_percent != 0 %}
+                                <div class="fund-change-percent 
+                                    {% if fund.change_percent > 0 %}positive
+                                    {% elif fund.change_percent < 0 %}negative{% endif %}">
+                                    {% if fund.change_percent > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(fund.change_percent) }}%
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if total_pages > 1 %}
+                    <div class="pagination">
+                        {% if page > 1 %}
+                            <a href="/market/funds?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">← Назад</a>
+                        {% endif %}
+                        
+                        <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+                        
+                        {% if page < total_pages %}
+                            <a href="/market/funds?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">Вперед →</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% elif asset_type != 'funds' %}
+                    <div class="no-data">
+                        <p>Загрузка данных...</p>
+                    </div>
+                {% else %}
+                    <div class="no-data">
+                        <p>Не удалось загрузить данные по фондам</p>
+                        {% if search_query %}
+                        <p>Попробуйте изменить поисковый запрос</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
 
@@ -220,9 +325,72 @@
 
         <div class="tab-pane {% if asset_type == 'indices' %}active{% endif %}" id="indices">
             <div class="assets-list">
-                <div class="no-data">
-                    <p>Данные по индексам будут добавлены позже</p>
-                </div>
+                {% if stocks and asset_type == 'indices' %}
+                    <div class="stocks-info">
+                        <p>Найдено индексов: {{ total_count }}</p>
+                    </div>
+                    {% for index in stocks %}
+                    <div class="index-card">
+                        <div class="index-info">
+                            <div>
+                                <h3 class="index-name">{{ index.name }}</h3>
+                                <p class="index-ticker">{{ index.ticker }}</p>
+                                <div class="index-details">
+                                    {% if index.high > 0 and index.low > 0 %}
+                                    <span class="index-high">Макс: {{ "%.2f"|format(index.high) }}</span>
+                                    <span class="index-low">Мин: {{ "%.2f"|format(index.low) }}</span>
+                                    <span class="index-open">Открытие: {{ "%.2f"|format(index.open_price) }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="price-section">
+                                <div class="index-price">
+                                    {{ "%.2f"|format(index.price) }}
+                                </div>
+                                <div class="index-change 
+                                    {% if index.change > 0 %}positive
+                                    {% elif index.change < 0 %}negative{% endif %}">
+                                    {% if index.change > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(index.change) }}
+                                </div>
+                                <div class="index-change-percent 
+                                    {% if index.change_percent > 0 %}positive
+                                    {% elif index.change_percent < 0 %}negative{% endif %}">
+                                    {% if index.change_percent > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(index.change_percent) }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if total_pages > 1 %}
+                    <div class="pagination">
+                        {% if page > 1 %}
+                            <a href="/market/indices?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">← Назад</a>
+                        {% endif %}
+                        
+                        <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+                        
+                        {% if page < total_pages %}
+                            <a href="/market/indices?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">Вперед →</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% elif asset_type != 'indices' %}
+                    <div class="no-data">
+                        <p>Загрузка данных...</p>
+                    </div>
+                {% else %}
+                    <div class="no-data">
+                        <p>Не удалось загрузить данные по индексам</p>
+                        {% if search_query %}
+                        <p>Попробуйте изменить поисковый запрос</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

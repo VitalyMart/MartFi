@@ -84,6 +84,8 @@ class MarketService:
             "change": lambda x: float(x.get('change', 0)),
             "change_percent": lambda x: float(x.get('change_percent', 0)),
             "volume": lambda x: float(x.get('volume', 0)),
+            "yield": lambda x: float(x.get('yield', 0)),
+            "coupon_value": lambda x: float(x.get('coupon_value', 0)),
         }
         key_func = sort_key_map.get(sort_by, sort_key_map["name"])
         return sorted(data, key=key_func, reverse=reverse)
