@@ -43,6 +43,9 @@
                     <option value="coupon_value" {% if sort_by == 'coupon_value' %}selected{% endif %}>По купону</option>
                     <option value="maturity_date" {% if sort_by == 'maturity_date' %}selected{% endif %}>По дате погашения</option>
                     {% endif %}
+                    {% if asset_type == 'currency' %}
+                    <option value="change_percent" {% if sort_by == 'change_percent' %}selected{% endif %}>По изменению %</option>
+                    {% endif %}
                     {% if asset_type == 'indices' %}
                     <option value="change_percent" {% if sort_by == 'change_percent' %}selected{% endif %}>По изменению %</option>
                     <option value="volume" {% if sort_by == 'volume' %}selected{% endif %}>По объему</option>
@@ -317,9 +320,71 @@
 
         <div class="tab-pane {% if asset_type == 'currency' %}active{% endif %}" id="currency">
             <div class="assets-list">
-                <div class="no-data">
-                    <p>Данные по валюте будут добавлены позже</p>
-                </div>
+                {% if stocks and asset_type == 'currency' %}
+                    <div class="stocks-info">
+                        <p>Найдено валют: {{ total_count }}</p>
+                    </div>
+                    {% for currency in stocks %}
+                    <div class="currency-card">
+                        <div class="currency-info">
+                            <div>
+                                <h3 class="currency-name">{{ currency.name }}</h3>
+                                <p class="currency-ticker">{{ currency.ticker }}</p>
+                            </div>
+                            <div class="price-section">
+                                <div class="currency-price">
+                                    {% if currency.price > 0 %}
+                                        {{ "%.2f"|format(currency.price) }} руб.
+                                    {% else %}
+                                        Нет данных
+                                    {% endif %}
+                                </div>
+                                <div class="currency-change 
+                                    {% if currency.change > 0 %}positive
+                                    {% elif currency.change < 0 %}negative{% endif %}">
+                                    {% if currency.change > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(currency.change) }}
+                                </div>
+                                {% if currency.change_percent != 0 %}
+                                <div class="currency-change-percent 
+                                    {% if currency.change_percent > 0 %}positive
+                                    {% elif currency.change_percent < 0 %}negative{% endif %}">
+                                    {% if currency.change_percent > 0 %}+{% endif %}
+                                    {{ "%.2f"|format(currency.change_percent) }}%
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if total_pages > 1 %}
+                    <div class="pagination">
+                        {% if page > 1 %}
+                            <a href="/market/currency?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">← Назад</a>
+                        {% endif %}
+                        
+                        <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+                        
+                        {% if page < total_pages %}
+                            <a href="/market/currency?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+                               class="page-btn">Вперед →</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% elif asset_type != 'currency' %}
+                    <div class="no-data">
+                        <p>Загрузка данных...</p>
+                    </div>
+                {% else %}
+                    <div class="no-data">
+                        <p>Не удалось загрузить данные по валютам</p>
+                        {% if search_query %}
+                        <p>Попробуйте изменить поисковый запрос</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
 

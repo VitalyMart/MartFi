@@ -2,7 +2,7 @@ from fastapi import Depends
 from ..contracts.security import ISecurityService
 from ..services.market_service import MarketService
 from .common import get_security_service
-from ..services.market.providers import StocksDataProvider, BondsDataProvider, FundsDataProvider, IndicesDataProvider
+from ..services.market.providers import StocksDataProvider, BondsDataProvider, FundsDataProvider, IndicesDataProvider, CurrencyDataProvider
 
 def get_market_data_providers():
     base_url = "https://iss.moex.com/iss"
@@ -11,6 +11,7 @@ def get_market_data_providers():
         BondsDataProvider(base_url),
         FundsDataProvider(base_url),
         IndicesDataProvider(base_url),
+        CurrencyDataProvider(base_url),
     ]
 
 def get_market_service(

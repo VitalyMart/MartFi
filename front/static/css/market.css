@@ -448,6 +448,60 @@
 .fund-change.negative, .index-change.negative {
     color: #c62828;
 }
+.currency-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fff;
+    margin-bottom: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.currency-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.currency-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.currency-name {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: #1a1a1a;
+}
+
+.currency-ticker {
+    font-size: 14px;
+    color: #666;
+    margin: 4px 0 0 0;
+}
+
+.currency-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    white-space: nowrap;
+}
+
+.currency-change {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.currency-change.positive {
+    color: #2e7d32;
+}
+
+.currency-change.negative {
+    color: #c62828;
+}
 @media (max-width: 768px) {
     .market-tabs {
         border-radius: 8px;
