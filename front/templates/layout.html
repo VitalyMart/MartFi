@@ -15,53 +15,103 @@
 
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h2>MartFi</h2>
-            <p class="user-welcome">Добро пожаловать, <strong>{{ user.full_name }}</strong>!</p>
+            <div class="logo-section">
+                <div class="logo-container">
+                    <div class="logo-icon">M</div>
+                    <div class="logo-text">
+                        <h2>MartFi</h2>
+                        <p class="logo-subtitle">Финансовая платформа</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-avatar">
+                    {{ user.full_name|first|upper }}
+                </div>
+                <div class="user-details">
+                    <p class="user-name">{{ user.full_name }}</p>
+                    <p class="user-email">{{ user.email }}</p>
+                </div>
+            </div>
         </div>
+
+        <div class="sidebar-divider"></div>
 
         <ul class="nav-links">
             <li class="nav-item">
                 <a href="/" class="nav-link">
-                    <span class="nav-icon">🏠</span>
+                    <span class="nav-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                        </svg>
+                    </span>
                     <span class="nav-text">Главная</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="/market" class="nav-link">
-                    <span class="nav-icon">💼</span>
+                    <span class="nav-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/>
+                        </svg>
+                    </span>
                     <span class="nav-text">Рынок</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="/assistant" class="nav-link">
-                    <span class="nav-icon">🤖</span>
+                    <span class="nav-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M19 2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h4l3 3 3-3h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 3.3c1.49 0 2.7 1.21 2.7 2.7 0 1.49-1.21 2.7-2.7 2.7-1.49 0-2.7-1.21-2.7-2.7 0-1.49 1.21-2.7 2.7-2.7zM18 16H6v-.9c0-2 4-3.1 6-3.1s6 1.1 6 3.1v.9z"/>
+                        </svg>
+                    </span>
                     <span class="nav-text">Ассистент</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="/portfolio" class="nav-link">
-                    <span class="nav-icon">📊</span>
+                    <span class="nav-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                    </span>
                     <span class="nav-text">Портфель</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="/learning" class="nav-link">
-                    <span class="nav-icon">🎓</span>
+                    <span class="nav-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
+                        </svg>
+                    </span>
                     <span class="nav-text">Обучение</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="/profile" class="nav-link">
-                    <span class="nav-icon">👤</span>
+                    <span class="nav-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    </span>
                     <span class="nav-text">Профиль</span>
                 </a>
             </li>
         </ul>
 
+        <div class="sidebar-divider"></div>
+
         <div class="sidebar-footer">
             <form method="post" action="/logout">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="btn btn-logout">Выйти</button>
+                <button type="submit" class="btn btn-logout">
+                    <svg class="logout-icon" viewBox="0 0 24 24">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                    <span>Выйти</span>
+                </button>
             </form>
         </div>
     </nav>
