@@ -141,13 +141,25 @@
                         <div class="asset-card stock-card">
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ stock.ticker }}</div>
-                                <div
-                                    class="asset-price {% if stock.change > 0 %}positive{% elif stock.change < 0 %}negative{% endif %}">
-                                    {% if stock.price > 0 %}
-                                    {{ "%.2f"|format(stock.price) }} ₽
-                                    {% else %}
-                                    Нет данных
-                                    {% endif %}
+                                <div class="asset-actions">
+                                    <!-- Кнопка добавления в портфель -->
+                                    <button class="add-to-portfolio-btn" 
+                                            data-ticker="{{ stock.ticker }}" 
+                                            data-name="{{ stock.name }}"
+                                            data-asset-type="stock"
+                                            data-price="{{ stock.price }}"
+                                            title="Добавить в портфель">
+                                        <svg class="add-icon" viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                    </button>
+                                    <div class="asset-price {% if stock.change > 0 %}positive{% elif stock.change < 0 %}negative{% endif %}">
+                                        {% if stock.price > 0 %}
+                                        {{ "%.2f"|format(stock.price) }} ₽
+                                        {% else %}
+                                        Нет данных
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
 
@@ -251,13 +263,25 @@
                         <div class="asset-card bond-card">
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ bond.ticker }}</div>
-                                <div
-                                    class="asset-price {% if bond.change > 0 %}positive{% elif bond.change < 0 %}negative{% endif %}">
-                                    {% if bond.price > 0 %}
-                                    {{ "%.2f"|format(bond.price) }} ₽
-                                    {% else %}
-                                    Нет данных
-                                    {% endif %}
+                                <div class="asset-actions">
+                                    <!-- Кнопка добавления в портфель -->
+                                    <button class="add-to-portfolio-btn" 
+                                            data-ticker="{{ bond.ticker }}" 
+                                            data-name="{{ bond.name }}"
+                                            data-asset-type="bond"
+                                            data-price="{{ bond.price }}"
+                                            title="Добавить в портфель">
+                                        <svg class="add-icon" viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                    </button>
+                                    <div class="asset-price {% if bond.change > 0 %}positive{% elif bond.change < 0 %}negative{% endif %}">
+                                        {% if bond.price > 0 %}
+                                        {{ "%.2f"|format(bond.price) }} ₽
+                                        {% else %}
+                                        Нет данных
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
 
@@ -372,13 +396,25 @@
                         <div class="asset-card fund-card">
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ fund.ticker }}</div>
-                                <div
-                                    class="asset-price {% if fund.change > 0 %}positive{% elif fund.change < 0 %}negative{% endif %}">
-                                    {% if fund.price > 0 %}
-                                    {{ "%.2f"|format(fund.price) }} ₽
-                                    {% else %}
-                                    Нет данных
-                                    {% endif %}
+                                <div class="asset-actions">
+                                    <!-- Кнопка добавления в портфель -->
+                                    <button class="add-to-portfolio-btn" 
+                                            data-ticker="{{ fund.ticker }}" 
+                                            data-name="{{ fund.name }}"
+                                            data-asset-type="fund"
+                                            data-price="{{ fund.price }}"
+                                            title="Добавить в портфель">
+                                        <svg class="add-icon" viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                    </button>
+                                    <div class="asset-price {% if fund.change > 0 %}positive{% elif fund.change < 0 %}negative{% endif %}">
+                                        {% if fund.price > 0 %}
+                                        {{ "%.2f"|format(fund.price) }} ₽
+                                        {% else %}
+                                        Нет данных
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
 
@@ -485,13 +521,25 @@
                         <div class="asset-card currency-card">
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ currency.ticker }}</div>
-                                <div
-                                    class="asset-price {% if currency.change > 0 %}positive{% elif currency.change < 0 %}negative{% endif %}">
-                                    {% if currency.price > 0 %}
-                                    {{ "%.2f"|format(currency.price) }} ₽
-                                    {% else %}
-                                    Нет данных
-                                    {% endif %}
+                                <div class="asset-actions">
+                                    <!-- Кнопка добавления в портфель -->
+                                    <button class="add-to-portfolio-btn" 
+                                            data-ticker="{{ currency.ticker }}" 
+                                            data-name="{{ currency.name }}"
+                                            data-asset-type="currency"
+                                            data-price="{{ currency.price }}"
+                                            title="Добавить в портфель">
+                                        <svg class="add-icon" viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                    </button>
+                                    <div class="asset-price {% if currency.change > 0 %}positive{% elif currency.change < 0 %}negative{% endif %}">
+                                        {% if currency.price > 0 %}
+                                        {{ "%.2f"|format(currency.price) }} ₽
+                                        {% else %}
+                                        Нет данных
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
 
@@ -582,9 +630,18 @@
                         <div class="asset-card index-card">
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ index.ticker }}</div>
-                                <div
-                                    class="asset-price {% if index.change > 0 %}positive{% elif index.change < 0 %}negative{% endif %}">
-                                    {{ "%.2f"|format(index.price) }}
+                                <div class="asset-actions">
+                                    <!-- Индексы нельзя добавлять в портфель, поэтому кнопка отключена -->
+                                    <button class="add-to-portfolio-btn disabled" 
+                                            title="Индексы нельзя добавлять в портфель"
+                                            disabled>
+                                        <svg class="add-icon" viewBox="0 0 24 24">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                    </button>
+                                    <div class="asset-price {% if index.change > 0 %}positive{% elif index.change < 0 %}negative{% endif %}">
+                                        {{ "%.2f"|format(index.price) }}
+                                    </div>
                                 </div>
                             </div>
 
@@ -676,8 +733,59 @@
         </div>
     </div>
 </div>
+
+<!-- Модальное окно для быстрого добавления в портфель -->
+<div class="modal-overlay" id="addToPortfolioModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Добавить в портфель</h3>
+            <button class="modal-close" id="closeModalBtn">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="addToPortfolioForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" id="assetTicker" name="ticker">
+                <input type="hidden" id="assetType" name="asset_type">
+                
+                <div class="asset-preview">
+                    <div class="asset-preview-ticker" id="previewTicker"></div>
+                    <div class="asset-preview-name" id="previewName"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantityInput">Количество:</label>
+                    <input type="number" id="quantityInput" name="quantity" 
+                           class="form-control" min="0.01" step="0.01" value="1" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="priceInput">Цена покупки (₽):</label>
+                    <input type="number" id="priceInput" name="average_price" 
+                           class="form-control" min="0.01" step="0.01" value="0" required>
+                    <small class="form-hint">Оставьте 0, чтобы использовать текущую рыночную цену</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notesInput">Примечания (необязательно):</label>
+                    <textarea id="notesInput" name="notes" class="form-control" rows="2"
+                              placeholder="Дополнительная информация..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelBtn">Отмена</button>
+                    <button type="submit" class="btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="/static/js/market.js"></script>
+<script src="/static/js/market-portfolio.js"></script>
 {% endblock %}

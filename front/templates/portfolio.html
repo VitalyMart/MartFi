@@ -1,0 +1,205 @@
+{% extends "layout.html" %}
+
+{% block title %}Портфель{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/portfolio.css">
+{% endblock %}
+
+{% block content %}
+<div class="portfolio-container">
+    <div class="portfolio-header">
+        <div class="portfolio-title-section">
+            <h1 class="portfolio-title">Портфель</h1>
+            <p class="portfolio-subtitle">Управление вашими инвестициями</p>
+        </div>
+        
+        <button class="btn btn-primary" id="addAssetBtn">
+            <svg class="btn-icon" viewBox="0 0 24 24">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+            Добавить актив
+        </button>
+    </div>
+
+    <!-- Сводная статистика -->
+    <div class="portfolio-summary">
+        <div class="summary-card">
+            <div class="summary-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
+            </div>
+            <div class="summary-content">
+                <div class="summary-label">Текущая стоимость</div>
+                <div class="summary-value {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
+                    {{ "%.2f"|format(portfolio_summary.total_current_value) }} ₽
+                </div>
+                <div class="summary-change {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if portfolio_summary.total_change >= 0 %}+{% endif %}
+                    {{ "%.2f"|format(portfolio_summary.total_change) }} ₽
+                    ({% if portfolio_summary.total_change_percent >= 0 %}+{% endif %}
+                    {{ "%.2f"|format(portfolio_summary.total_change_percent) }}%)
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-card">
+            <div class="summary-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                </svg>
+            </div>
+            <div class="summary-content">
+                <div class="summary-label">Инвестировано</div>
+                <div class="summary-value">
+                    {{ "%.2f"|format(portfolio_summary.total_purchase_value) }} ₽
+                </div>
+                <div class="summary-meta">{{ portfolio_summary.item_count }} активов</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица активов -->
+    <div class="portfolio-table-container">
+        <div class="table-header">
+            <h2>Ваши активы</h2>
+            <div class="table-actions">
+                <button class="btn btn-secondary" id="refreshPortfolio">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    Обновить
+                </button>
+            </div>
+        </div>
+        
+        {% if portfolio_items %}
+        <div class="table-responsive">
+            <table class="portfolio-table">
+                <thead>
+                    <tr>
+                        <th>Тикер</th>
+                        <th>Название</th>
+                        <th>Тип</th>
+                        <th>Количество</th>
+                        <th>Средняя цена</th>
+                        <th>Текущая цена</th>
+                        <th>Текущая стоимость</th>
+                        <th>Изменение</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in portfolio_items %}
+                    <tr data-item-id="{{ item.id }}">
+                        <td class="ticker-cell">
+                            <span class="ticker">{{ item.ticker }}</span>
+                        </td>
+                        <td class="name-cell">{{ item.name }}</td>
+                        <td class="type-cell">
+                            <span class="asset-type-badge {{ item.asset_type }}">
+                                {{ item.asset_type_display }}
+                            </span>
+                        </td>
+                        <td class="quantity-cell">{{ "%.2f"|format(item.quantity) }}</td>
+                        <td class="avg-price-cell">{{ "%.2f"|format(item.average_price) }} ₽</td>
+                        <td class="current-price-cell">{{ "%.2f"|format(item.current_price) }} ₽</td>
+                        <td class="current-value-cell">{{ "%.2f"|format(item.current_value) }} ₽</td>
+                        <td class="change-cell">
+                            <div class="change-wrapper {% if item.total_change >= 0 %}positive{% else %}negative{% endif %}">
+                                <span class="change-amount">
+                                    {% if item.total_change >= 0 %}+{% endif %}
+                                    {{ "%.2f"|format(item.total_change) }} ₽
+                                </span>
+                                <span class="change-percent">
+                                    ({% if item.total_change_percent >= 0 %}+{% endif %}
+                                    {{ "%.2f"|format(item.total_change_percent) }}%)
+                                </span>
+                            </div>
+                        </td>
+                        <td class="actions-cell">
+                            <button class="btn-action delete-btn" data-item-id="{{ item.id }}" title="Удалить">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-portfolio">
+            <svg class="empty-icon" viewBox="0 0 24 24">
+                <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
+            </svg>
+            <h3>Портфель пуст</h3>
+            <p>Добавьте свои первые активы для отслеживания</p>
+            <button class="btn btn-primary" id="addFirstAssetBtn">Добавить актив</button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно добавления актива -->
+<div class="modal" id="addAssetModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Добавить актив в портфель</h3>
+            <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addAssetForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                
+                <div class="form-group">
+                    <label for="assetType">Тип актива:</label>
+                    <select name="asset_type" id="assetType" class="form-control" required>
+                        <option value="stock">Акция</option>
+                        <option value="bond">Облигация</option>
+                        <option value="fund">Фонд</option>
+                        <option value="currency">Валюта</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="assetTicker">Тикер:</label>
+                    <input type="text" name="ticker" id="assetTicker" class="form-control" required
+                           placeholder="Например: SBER, GAZP">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="assetQuantity">Количество:</label>
+                        <input type="number" name="quantity" id="assetQuantity" class="form-control" 
+                               step="0.01" min="0.01" value="1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="assetPrice">Средняя цена покупки:</label>
+                        <input type="number" name="average_price" id="assetPrice" class="form-control"
+                               step="0.01" min="0" value="0">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="assetNotes">Примечания (необязательно):</label>
+                    <textarea name="notes" id="assetNotes" class="form-control" rows="3"
+                              placeholder="Дополнительная информация..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelAdd">Отмена</button>
+                    <button type="submit" class="btn btn-secondary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/portfolio.js"></script>
+{% endblock %}

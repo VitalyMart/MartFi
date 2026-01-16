@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanes = document.querySelectorAll('.tab-pane');
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+
     const tabsHeader = document.querySelector('.tabs-header');
     if (tabsHeader) {
         let isDown = false;
@@ -104,6 +106,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const x = e.touches[0].pageX - tabsHeader.offsetLeft;
             const walk = (x - startX) * 2;
             tabsHeader.scrollLeft = scrollLeft - walk;
+        });
+    }
+    
+ 
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+        let searchTimeout;
+        
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (this.value.length >= 2 || this.value.length === 0) {
+                    searchForm.submit();
+                }
+            }, 500);
         });
     }
 });

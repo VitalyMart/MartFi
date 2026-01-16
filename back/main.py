@@ -12,7 +12,7 @@ from .core.logger import logger
 from .routes.auth import router as auth_router
 from .routes.main import router as main_router
 from .routes.market import router as market_router
-
+from .routes.portfolio import router as portfolio_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,3 +40,4 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 app.include_router(auth_router)
 app.include_router(main_router)
 app.include_router(market_router)
+app.include_router(portfolio_router)

@@ -1,0 +1,496 @@
+.portfolio-container {
+    padding: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.portfolio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.portfolio-title-section {
+    flex: 1;
+}
+
+.portfolio-title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 0.5rem 0;
+}
+
+.portfolio-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    margin: 0;
+}
+
+#addAssetBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+#addAssetBtn:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.btn-icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.portfolio-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e0;
+}
+
+.summary-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.summary-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+}
+
+.summary-value.positive {
+    color: #059669;
+}
+
+.summary-value.negative {
+    color: #dc2626;
+}
+
+.summary-change {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.summary-change.positive {
+    color: #059669;
+}
+
+.summary-change.negative {
+    color: #dc2626;
+}
+
+.summary-meta {
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+.portfolio-table-container {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-secondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e0;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.portfolio-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.portfolio-table thead {
+    background: #f8fafc;
+}
+
+.portfolio-table th {
+    padding: 1rem;
+    text-align: left;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.portfolio-table tbody tr {
+    border-bottom: 1px solid #e2e8f0;
+    transition: background-color 0.2s ease;
+}
+
+.portfolio-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.portfolio-table td {
+    padding: 1rem;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+.ticker-cell .ticker {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 600;
+    color: #1e293b;
+    background: #f1f5f9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.type-cell .asset-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.asset-type-badge.stock {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+}
+
+.asset-type-badge.bond {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.asset-type-badge.fund {
+    background: rgba(168, 85, 247, 0.1);
+    color: #7c3aed;
+}
+
+.asset-type-badge.currency {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.asset-type-badge.index {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.change-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.change-wrapper.positive {
+    color: #059669;
+}
+
+.change-wrapper.negative {
+    color: #dc2626;
+}
+
+.change-amount {
+    font-weight: 600;
+}
+
+.change-percent {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.actions-cell {
+    width: 100px;
+}
+
+.btn-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-action:hover {
+    background: #f1f5f9;
+}
+
+.btn-action svg {
+    width: 18px;
+    height: 18px;
+    fill: #64748b;
+}
+
+
+.delete-btn:hover svg {
+    fill: #dc2626;
+}
+
+.empty-portfolio {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-icon {
+    width: 64px;
+    height: 64px;
+    fill: #cbd5e0;
+    margin-bottom: 1.5rem;
+}
+
+.empty-portfolio h3 {
+    font-size: 1.25rem;
+    color: #475569;
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+}
+
+.empty-portfolio p {
+    font-size: 1rem;
+    color: #94a3b8;
+    margin: 0 0 1.5rem 0;
+}
+
+#addFirstAssetBtn {
+    margin-top: 1rem;
+}
+
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #64748b;
+    transition: color 0.2s ease;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #dc2626;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .portfolio-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .portfolio-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .table-actions {
+        justify-content: flex-start;
+    }
+    
+    .portfolio-table {
+        min-width: 800px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+        max-height: calc(100vh - 2rem);
+    }
+}
