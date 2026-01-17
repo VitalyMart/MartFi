@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from ..auth.security import csrf_protect
 from ..services.portfolio_service import PortfolioService
+from ..services.render_service import RenderService
 from ..templates import templates
 from ..dependencies.portfolio_dependencies import get_portfolio_service
 from ..dependencies.auth_dependencies import get_current_user
+from ..dependencies.render_dependencies import get_render_service
 from ..auth.entities.user import User as DomainUser
 from ..core.logger import logger
 
@@ -14,6 +16,7 @@ router = APIRouter()
 async def portfolio_page(
     request: Request,
     portfolio_service: PortfolioService = Depends(get_portfolio_service),
+    render_service: RenderService = Depends(get_render_service),
     current_user: DomainUser | None = Depends(get_current_user),
 ):
     if not current_user:
@@ -23,12 +26,11 @@ async def portfolio_page(
     if not data:
         return RedirectResponse("/login")
     
-    return templates.TemplateResponse(
-        "portfolio.html",
-        {
-            "request": request,
+    return render_service.render_with_csrf(
+        request=request,
+        template_name="portfolio.html",
+        context={
             "user": data.user,
-            "csrf_token": data.csrf_token,
             "portfolio_items": data.portfolio_items,
             "portfolio_summary": data.portfolio_summary,
         }
@@ -48,7 +50,6 @@ async def add_to_portfolio(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
     
     if asset_type == 'index':
         return JSONResponse({

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
-from ..auth.security import csrf_protect
 from ..services.auth_service import AuthService
-from ..dto.auth import RegistrationResult, LoginResult, LogoutResult
+from ..services.render_service import RenderService
+from ..dto.auth import RegistrationResult, LoginResult, LogoutResult, PageContextResult
+from ..auth.security import csrf_protect
 from ..auth.exceptions import (
     RateLimitException,
     InvalidCredentialsException,
@@ -10,8 +11,8 @@ from ..auth.exceptions import (
     ValidationException,
 )
 from ..templates import templates
-from ..utils import render_form_error
 from ..dependencies.auth_dependencies import get_auth_service, get_current_user
+from ..dependencies.render_dependencies import get_render_service
 from ..auth.entities.user import User as DomainUser
 from ..core.logger import logger
 from ..config import settings
@@ -44,6 +45,7 @@ async def register_page(
 async def register(
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
+    render_service: RenderService = Depends(get_render_service),
     email: str = Form(...),
     password: str = Form(...),
     full_name: str = Form(...),
@@ -55,20 +57,41 @@ async def register(
             email=email, password=password, full_name=full_name, client_ip=client_ip
         )
     except RateLimitException as e:
-        return render_form_error(request, "register.html", str(e))
+        return render_service.render_form_error(
+            request=request,
+            template_name="register.html",
+            error=str(e),
+            additional_context={"email": email, "full_name": full_name}
+        )
     except ValidationException as e:
-        return render_form_error(request, "register.html", str(e))
+        return render_service.render_form_error(
+            request=request,
+            template_name="register.html",
+            error=str(e),
+            additional_context={"email": email, "full_name": full_name}
+        )
     except UserAlreadyExistsException as e:
-        return render_form_error(request, "register.html", str(e))
+        return render_service.render_form_error(
+            request=request,
+            template_name="register.html",
+            error=str(e),
+            additional_context={"email": email, "full_name": full_name}
+        )
     except Exception as e:
         logger.error(f"Registration error: {e}")
-        return render_form_error(request, "register.html", "Registration error. Try again later")
+        return render_service.render_form_error(
+            request=request,
+            template_name="register.html",
+            error="Registration error. Try again later",
+            additional_context={"email": email, "full_name": full_name}
+        )
     return RedirectResponse(result.redirect_path or "/login?registered=true", status_code=303)
 
 @router.post("/login")
 async def login(
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
+    render_service: RenderService = Depends(get_render_service),
     email: str = Form(...),
     password: str = Form(...),
     csrf_verified: bool = Depends(csrf_protect),
@@ -77,12 +100,27 @@ async def login(
     try:
         result: LoginResult = await auth_service.login_user(email=email, password=password, client_ip=client_ip)
     except RateLimitException as e:
-        return render_form_error(request, "login.html", str(e))
+        return render_service.render_form_error(
+            request=request,
+            template_name="login.html",
+            error=str(e),
+            additional_context={"email": email}
+        )
     except InvalidCredentialsException as e:
-        return render_form_error(request, "login.html", str(e))
+        return render_service.render_form_error(
+            request=request,
+            template_name="login.html",
+            error=str(e),
+            additional_context={"email": email}
+        )
     except Exception as e:
         logger.error(f"Login error: {e}")
-        return render_form_error(request, "login.html", "Login error. Try again later")
+        return render_service.render_form_error(
+            request=request,
+            template_name="login.html",
+            error="Login error. Try again later",
+            additional_context={"email": email}
+        )
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(
         key="access_token",
