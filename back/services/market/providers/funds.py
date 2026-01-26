@@ -13,7 +13,7 @@ class FundsDataProvider(IMarketDataProvider):
         return "moex:funds:etf"
 
     def get_asset_type(self) -> str:
-        return "funds"
+        return "fund"
 
     async def fetch_data(self) -> List[Dict[str, Any]]:
         try:

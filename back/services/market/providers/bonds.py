@@ -14,18 +14,16 @@ class BondsDataProvider(IMarketDataProvider):
         return "moex:bonds:all"
 
     def get_asset_type(self) -> str:
-        return "bonds"
+        return "bond"
 
     async def fetch_data(self) -> List[Dict[str, Any]]:
-        all_bonds = []
-        
         try:
             url = f"{self.moex_base_url}/engines/stock/markets/bonds/securities.json"
             
             async with aiohttp.ClientSession() as session:
                 securities_params = {
                     'iss.meta': 'off',
-                    'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE,MATDATE,COUPONVALUE,COUPONPERIOD,NEXTCOUPON,ISSUESIZE,CURRENCYID',
+                    'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE,MATDATE,COUPONVALUE,COUPONPERIOD,NEXTCOUPON,ISSUESIZE,CURRENCYID,PREVPRICE,PREVWAPRICE',
                 }
                 
                 async with session.get(url, params=securities_params) as response:
@@ -35,6 +33,10 @@ class BondsDataProvider(IMarketDataProvider):
                     
                     data = await response.json()
                     all_securities = data.get('securities', {}).get('data', [])
+                    securities_columns = data.get('securities', {}).get('columns', [])
+                
+                prevprice_idx = securities_columns.index('PREVPRICE') if 'PREVPRICE' in securities_columns else -1
+                prevwaprice_idx = securities_columns.index('PREVWAPRICE') if 'PREVWAPRICE' in securities_columns else -1
                 
                 market_data_dict = {}
                 
@@ -100,11 +102,22 @@ class BondsDataProvider(IMarketDataProvider):
                         },
                     )
 
+                    price = market_info['price']
+                    
+                    if price == 0:
+                        if prevwaprice_idx != -1 and prevwaprice_idx < len(security) and security[prevwaprice_idx] is not None:
+                            price = security[prevwaprice_idx]
+                        elif prevprice_idx != -1 and prevprice_idx < len(security) and security[prevprice_idx] is not None:
+                            price = security[prevprice_idx]
+
+                    if price == 0:
+                        continue
+
                     result.append({
                         'ticker': ticker,
                         'name': name,
                         'full_name': full_name,
-                        'price': market_info['price'],
+                        'price': float(price) if price is not None else 0,
                         'change': market_info['change'],
                         'open_price': market_info['open'],
                         'change_percent': market_info['change_percent'],

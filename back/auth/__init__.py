@@ -14,7 +14,6 @@ from .validators import validate_full_name, normalize_and_validated_email
 from .token_service import create_access_token, verify_token, EmailAlreadyExistsError, UserCreationError, UserServiceError
 
 __all__ = [
-    "get_current_user",
     "generate_fake_hash",
     "generate_csrf_token",
     "validate_csrf_token",

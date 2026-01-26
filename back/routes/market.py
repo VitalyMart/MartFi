@@ -55,7 +55,7 @@ async def assets_page(
     if not current_user:
         return RedirectResponse("/login")
     
-    valid_asset_types = ["stock", "bonds", "funds", "currency", "indices"]
+    valid_asset_types = ["stock", "bond", "fund", "currency", "index"]
     if asset_type not in valid_asset_types:
         return RedirectResponse("/market/stock")
     

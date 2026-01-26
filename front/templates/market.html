@@ -1,11 +1,8 @@
 {% extends "layout.html" %}
-
 {% block title %}Рынок{% endblock %}
-
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/market.css">
 {% endblock %}
-
 {% block content %}
 <div class="market-container">
     <div class="market-header">
@@ -14,7 +11,6 @@
             <p class="market-subtitle">Отслеживание и анализ финансовых инструментов</p>
         </div>
     </div>
-
     <div class="market-tabs">
         <div class="tabs-header">
             <button class="tab-btn {% if asset_type == 'stock' %}active{% endif %}" data-tab="stock">
@@ -25,7 +21,7 @@
                 </span>
                 <span class="tab-text">Акции</span>
             </button>
-            <button class="tab-btn {% if asset_type == 'bonds' %}active{% endif %}" data-tab="bonds">
+            <button class="tab-btn {% if asset_type == 'bond' %}active{% endif %}" data-tab="bond">
                 <span class="tab-icon">
                     <svg viewBox="0 0 24 24">
                         <path
@@ -34,7 +30,7 @@
                 </span>
                 <span class="tab-text">Облигации</span>
             </button>
-            <button class="tab-btn {% if asset_type == 'funds' %}active{% endif %}" data-tab="funds">
+            <button class="tab-btn {% if asset_type == 'fund' %}active{% endif %}" data-tab="fund">
                 <span class="tab-icon">
                     <svg viewBox="0 0 24 24">
                         <path
@@ -52,7 +48,7 @@
                 </span>
                 <span class="tab-text">Валюта</span>
             </button>
-            <button class="tab-btn {% if asset_type == 'indices' %}active{% endif %}" data-tab="indices">
+            <button class="tab-btn {% if asset_type == 'index' %}active{% endif %}" data-tab="index">
                 <span class="tab-icon">
                     <svg viewBox="0 0 24 24">
                         <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" />
@@ -61,7 +57,6 @@
                 <span class="tab-text">Индексы</span>
             </button>
         </div>
-
         <div class="market-controls">
             <div class="controls-left">
                 <form method="get" action="/market/{{ asset_type }}" class="search-form" id="searchForm">
@@ -78,7 +73,6 @@
                     </div>
                 </form>
             </div>
-
             <div class="controls-right">
                 <form method="get" action="/market/{{ asset_type }}" class="sort-form" id="sortForm">
                     <input type="hidden" name="search" value="{{ search_query }}">
@@ -89,7 +83,7 @@
                                 <option value="name" {% if sort_by=='name' %}selected{% endif %}>По названию</option>
                                 <option value="ticker" {% if sort_by=='ticker' %}selected{% endif %}>По тикеру</option>
                                 <option value="price" {% if sort_by=='price' %}selected{% endif %}>По цене</option>
-                                {% if asset_type == 'bonds' %}
+                                {% if asset_type == 'bond' %}
                                 <option value="yield" {% if sort_by=='yield' %}selected{% endif %}>По доходности
                                 </option>
                                 <option value="coupon_value" {% if sort_by=='coupon_value' %}selected{% endif %}>По
@@ -97,16 +91,15 @@
                                 <option value="maturity_date" {% if sort_by=='maturity_date' %}selected{% endif %}>По
                                     дате погашения</option>
                                 {% endif %}
-                                {% if asset_type == 'currency' or asset_type == 'indices' %}
+                                {% if asset_type == 'currency' or asset_type == 'index' %}
                                 <option value="change_percent" {% if sort_by=='change_percent' %}selected{% endif %}>По
                                     изменению %</option>
                                 {% endif %}
-                                {% if asset_type == 'indices' %}
+                                {% if asset_type == 'index' %}
                                 <option value="volume" {% if sort_by=='volume' %}selected{% endif %}>По объему</option>
                                 {% endif %}
                             </select>
                         </div>
-
                         <div class="sort-group">
                             <label for="sortOrderSelect" class="sort-label">Порядок:</label>
                             <select name="sort_order" class="sort-order-select" id="sortOrderSelect">
@@ -119,7 +112,6 @@
                 </form>
             </div>
         </div>
-
         <div class="market-stats">
             <div class="stats-item">
                 <span class="stats-label">Найдено:</span>
@@ -130,7 +122,6 @@
                 <span class="stats-value">{{ page }} из {{ total_pages }}</span>
             </div>
         </div>
-
         <div class="tabs-content">
             <!-- Вкладка Акции -->
             <div class="tab-pane {% if asset_type == 'stock' %}active{% endif %}" id="stock">
@@ -143,17 +134,15 @@
                                 <div class="asset-ticker">{{ stock.ticker }}</div>
                                 <div class="asset-actions">
                                     <!-- Кнопка добавления в портфель -->
-                                    <button class="add-to-portfolio-btn" 
-                                            data-ticker="{{ stock.ticker }}" 
-                                            data-name="{{ stock.name }}"
-                                            data-asset-type="stock"
-                                            data-price="{{ stock.price }}"
-                                            title="Добавить в портфель">
+                                    <button class="add-to-portfolio-btn" data-ticker="{{ stock.ticker }}"
+                                        data-name="{{ stock.name }}" data-asset-type="stock"
+                                        data-price="{{ stock.price }}" title="Добавить в портфель">
                                         <svg class="add-icon" viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                         </svg>
                                     </button>
-                                    <div class="asset-price {% if stock.change > 0 %}positive{% elif stock.change < 0 %}negative{% endif %}">
+                                    <div
+                                        class="asset-price {% if stock.change > 0 %}positive{% elif stock.change < 0 %}negative{% endif %}">
                                         {% if stock.price > 0 %}
                                         {{ "%.2f"|format(stock.price) }} ₽
                                         {% else %}
@@ -162,20 +151,17 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="asset-body">
                                 <h3 class="asset-name">{{ stock.name }}</h3>
                                 {% if stock.full_name %}
                                 <p class="asset-fullname">{{ stock.full_name|truncate(50) }}</p>
                                 {% endif %}
-
                                 <div class="asset-details">
                                     {% if stock.sector %}
                                     <span class="asset-tag">{{ stock.sector }}</span>
                                     {% endif %}
                                 </div>
                             </div>
-
                             <div class="asset-footer">
                                 <div class="change-info">
                                     <div
@@ -199,7 +185,6 @@
                         </div>
                         {% endfor %}
                     </div>
-
                     {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
@@ -211,7 +196,6 @@
                             Назад
                         </a>
                         {% endif %}
-
                         <div class="page-numbers">
                             {% for p in range(1, total_pages + 1) %}
                             {% if p == page %}
@@ -222,7 +206,6 @@
                                 {% endif %}
                                 {% endfor %}
                         </div>
-
                         {% if page < total_pages %} <a
                             href="/market/stock?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn next-btn">
@@ -253,11 +236,10 @@
                     {% endif %}
                 </div>
             </div>
-
             <!-- Вкладка Облигации -->
-            <div class="tab-pane {% if asset_type == 'bonds' %}active{% endif %}" id="bonds">
+            <div class="tab-pane {% if asset_type == 'bond' %}active{% endif %}" id="bond">
                 <div class="assets-container">
-                    {% if stocks and asset_type == 'bonds' %}
+                    {% if stocks and asset_type == 'bond' %}
                     <div class="assets-grid">
                         {% for bond in stocks %}
                         <div class="asset-card bond-card">
@@ -265,32 +247,28 @@
                                 <div class="asset-ticker">{{ bond.ticker }}</div>
                                 <div class="asset-actions">
                                     <!-- Кнопка добавления в портфель -->
-                                    <button class="add-to-portfolio-btn" 
-                                            data-ticker="{{ bond.ticker }}" 
-                                            data-name="{{ bond.name }}"
-                                            data-asset-type="bond"
-                                            data-price="{{ bond.price }}"
-                                            title="Добавить в портфель">
+                                    <button class="add-to-portfolio-btn" data-ticker="{{ bond.ticker }}"
+                                        data-name="{{ bond.name }}" data-asset-type="bond" data-price="{{ bond.price }}"
+                                        title="Добавить в портфель">
                                         <svg class="add-icon" viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                         </svg>
                                     </button>
-                                    <div class="asset-price {% if bond.change > 0 %}positive{% elif bond.change < 0 %}negative{% endif %}">
+                                    <div
+                                        class="asset-price {% if bond.change > 0 %}positive{% elif bond.change < 0 %}negative{% endif %}">
                                         {% if bond.price > 0 %}
-                                        {{ "%.2f"|format(bond.price) }} ₽
+                                        {{ "%.2f"|format(bond.price) }} %
                                         {% else %}
                                         Нет данных
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
-
                             <div class="asset-body">
                                 <h3 class="asset-name">{{ bond.name }}</h3>
                                 {% if bond.full_name %}
                                 <p class="asset-fullname">{{ bond.full_name|truncate(50) }}</p>
                                 {% endif %}
-
                                 <div class="asset-details">
                                     {% if bond.maturity_date %}
                                     <span class="asset-tag">Погашение: {{ bond.maturity_date[:10] }}</span>
@@ -303,7 +281,6 @@
                                     {% endif %}
                                 </div>
                             </div>
-
                             <div class="asset-footer">
                                 <div class="change-info">
                                     {% if bond.yield > 0 %}
@@ -332,11 +309,10 @@
                         </div>
                         {% endfor %}
                     </div>
-
                     {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
-                        <a href="/market/bonds?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                        <a href="/market/bond?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn prev-btn">
                             <svg class="pagination-icon" viewBox="0 0 24 24">
                                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -344,20 +320,18 @@
                             Назад
                         </a>
                         {% endif %}
-
                         <div class="page-numbers">
                             {% for p in range(1, total_pages + 1) %}
                             {% if p == page %}
                             <span class="page-number active">{{ p }}</span>
                             {% elif p >= page - 2 and p <= page + 2 %} <a
-                                href="/market/bonds?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                                href="/market/bond?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                                 class="page-number">{{ p }}</a>
                                 {% endif %}
                                 {% endfor %}
                         </div>
-
                         {% if page < total_pages %} <a
-                            href="/market/bonds?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                            href="/market/bond?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn next-btn">
                             Вперед
                             <svg class="pagination-icon" viewBox="0 0 24 24">
@@ -367,7 +341,7 @@
                             {% endif %}
                     </div>
                     {% endif %}
-                    {% elif asset_type != 'bonds' %}
+                    {% elif asset_type != 'bond' %}
                     <div class="loading-state">
                         <div class="loading-spinner"></div>
                         <p>Загрузка данных...</p>
@@ -386,11 +360,10 @@
                     {% endif %}
                 </div>
             </div>
-
             <!-- Вкладка Фонды -->
-            <div class="tab-pane {% if asset_type == 'funds' %}active{% endif %}" id="funds">
+            <div class="tab-pane {% if asset_type == 'fund' %}active{% endif %}" id="fund">
                 <div class="assets-container">
-                    {% if stocks and asset_type == 'funds' %}
+                    {% if stocks and asset_type == 'fund' %}
                     <div class="assets-grid">
                         {% for fund in stocks %}
                         <div class="asset-card fund-card">
@@ -398,17 +371,15 @@
                                 <div class="asset-ticker">{{ fund.ticker }}</div>
                                 <div class="asset-actions">
                                     <!-- Кнопка добавления в портфель -->
-                                    <button class="add-to-portfolio-btn" 
-                                            data-ticker="{{ fund.ticker }}" 
-                                            data-name="{{ fund.name }}"
-                                            data-asset-type="fund"
-                                            data-price="{{ fund.price }}"
-                                            title="Добавить в портфель">
+                                    <button class="add-to-portfolio-btn" data-ticker="{{ fund.ticker }}"
+                                        data-name="{{ fund.name }}" data-asset-type="fund" data-price="{{ fund.price }}"
+                                        title="Добавить в портфель">
                                         <svg class="add-icon" viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                         </svg>
                                     </button>
-                                    <div class="asset-price {% if fund.change > 0 %}positive{% elif fund.change < 0 %}negative{% endif %}">
+                                    <div
+                                        class="asset-price {% if fund.change > 0 %}positive{% elif fund.change < 0 %}negative{% endif %}">
                                         {% if fund.price > 0 %}
                                         {{ "%.2f"|format(fund.price) }} ₽
                                         {% else %}
@@ -417,13 +388,11 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="asset-body">
                                 <h3 class="asset-name">{{ fund.name }}</h3>
                                 {% if fund.full_name %}
                                 <p class="asset-fullname">{{ fund.full_name|truncate(50) }}</p>
                                 {% endif %}
-
                                 <div class="asset-details">
                                     {% if fund.isin %}
                                     <span class="asset-tag">ISIN: {{ fund.isin }}</span>
@@ -433,7 +402,6 @@
                                     {% endif %}
                                 </div>
                             </div>
-
                             <div class="asset-footer">
                                 <div class="change-info">
                                     <div
@@ -457,11 +425,10 @@
                         </div>
                         {% endfor %}
                     </div>
-
                     {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
-                        <a href="/market/funds?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                        <a href="/market/fund?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn prev-btn">
                             <svg class="pagination-icon" viewBox="0 0 24 24">
                                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -469,20 +436,18 @@
                             Назад
                         </a>
                         {% endif %}
-
                         <div class="page-numbers">
                             {% for p in range(1, total_pages + 1) %}
                             {% if p == page %}
                             <span class="page-number active">{{ p }}</span>
                             {% elif p >= page - 2 and p <= page + 2 %} <a
-                                href="/market/funds?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                                href="/market/fund?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                                 class="page-number">{{ p }}</a>
                                 {% endif %}
                                 {% endfor %}
                         </div>
-
                         {% if page < total_pages %} <a
-                            href="/market/funds?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                            href="/market/fund?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn next-btn">
                             Вперед
                             <svg class="pagination-icon" viewBox="0 0 24 24">
@@ -492,7 +457,7 @@
                             {% endif %}
                     </div>
                     {% endif %}
-                    {% elif asset_type != 'funds' %}
+                    {% elif asset_type != 'fund' %}
                     <div class="loading-state">
                         <div class="loading-spinner"></div>
                         <p>Загрузка данных...</p>
@@ -511,7 +476,6 @@
                     {% endif %}
                 </div>
             </div>
-
             <!-- Вкладка Валюта -->
             <div class="tab-pane {% if asset_type == 'currency' %}active{% endif %}" id="currency">
                 <div class="assets-container">
@@ -523,17 +487,15 @@
                                 <div class="asset-ticker">{{ currency.ticker }}</div>
                                 <div class="asset-actions">
                                     <!-- Кнопка добавления в портфель -->
-                                    <button class="add-to-portfolio-btn" 
-                                            data-ticker="{{ currency.ticker }}" 
-                                            data-name="{{ currency.name }}"
-                                            data-asset-type="currency"
-                                            data-price="{{ currency.price }}"
-                                            title="Добавить в портфель">
+                                    <button class="add-to-portfolio-btn" data-ticker="{{ currency.ticker }}"
+                                        data-name="{{ currency.name }}" data-asset-type="currency"
+                                        data-price="{{ currency.price }}" title="Добавить в портфель">
                                         <svg class="add-icon" viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                         </svg>
                                     </button>
-                                    <div class="asset-price {% if currency.change > 0 %}positive{% elif currency.change < 0 %}negative{% endif %}">
+                                    <div
+                                        class="asset-price {% if currency.change > 0 %}positive{% elif currency.change < 0 %}negative{% endif %}">
                                         {% if currency.price > 0 %}
                                         {{ "%.2f"|format(currency.price) }} ₽
                                         {% else %}
@@ -542,11 +504,9 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="asset-body">
                                 <h3 class="asset-name">{{ currency.name }}</h3>
                             </div>
-
                             <div class="asset-footer">
                                 <div class="change-info">
                                     <div
@@ -566,7 +526,6 @@
                         </div>
                         {% endfor %}
                     </div>
-
                     {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
@@ -578,7 +537,6 @@
                             Назад
                         </a>
                         {% endif %}
-
                         <div class="page-numbers">
                             {% for p in range(1, total_pages + 1) %}
                             {% if p == page %}
@@ -589,7 +547,6 @@
                                 {% endif %}
                                 {% endfor %}
                         </div>
-
                         {% if page < total_pages %} <a
                             href="/market/currency?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn next-btn">
@@ -620,11 +577,10 @@
                     {% endif %}
                 </div>
             </div>
-
             <!-- Вкладка Индексы -->
-            <div class="tab-pane {% if asset_type == 'indices' %}active{% endif %}" id="indices">
+            <div class="tab-pane {% if asset_type == 'index' %}active{% endif %}" id="index">
                 <div class="assets-container">
-                    {% if stocks and asset_type == 'indices' %}
+                    {% if stocks and asset_type == 'index' %}
                     <div class="assets-grid">
                         {% for index in stocks %}
                         <div class="asset-card index-card">
@@ -632,22 +588,20 @@
                                 <div class="asset-ticker">{{ index.ticker }}</div>
                                 <div class="asset-actions">
                                     <!-- Индексы нельзя добавлять в портфель, поэтому кнопка отключена -->
-                                    <button class="add-to-portfolio-btn disabled" 
-                                            title="Индексы нельзя добавлять в портфель"
-                                            disabled>
+                                    <button class="add-to-portfolio-btn disabled"
+                                        title="Индексы нельзя добавлять в портфель" disabled>
                                         <svg class="add-icon" viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                         </svg>
                                     </button>
-                                    <div class="asset-price {% if index.change > 0 %}positive{% elif index.change < 0 %}negative{% endif %}">
+                                    <div
+                                        class="asset-price {% if index.change > 0 %}positive{% elif index.change < 0 %}negative{% endif %}">
                                         {{ "%.2f"|format(index.price) }}
                                     </div>
                                 </div>
                             </div>
-
                             <div class="asset-body">
                                 <h3 class="asset-name">{{ index.name }}</h3>
-
                                 <div class="asset-details">
                                     {% if index.high > 0 and index.low > 0 %}
                                     <span class="asset-tag">Макс: {{ "%.2f"|format(index.high) }}</span>
@@ -658,7 +612,6 @@
                                     {% endif %}
                                 </div>
                             </div>
-
                             <div class="asset-footer">
                                 <div class="change-info">
                                     <div
@@ -676,11 +629,10 @@
                         </div>
                         {% endfor %}
                     </div>
-
                     {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
-                        <a href="/market/indices?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                        <a href="/market/index?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn prev-btn">
                             <svg class="pagination-icon" viewBox="0 0 24 24">
                                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -688,20 +640,18 @@
                             Назад
                         </a>
                         {% endif %}
-
                         <div class="page-numbers">
                             {% for p in range(1, total_pages + 1) %}
                             {% if p == page %}
                             <span class="page-number active">{{ p }}</span>
                             {% elif p >= page - 2 and p <= page + 2 %} <a
-                                href="/market/indices?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                                href="/market/index?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                                 class="page-number">{{ p }}</a>
                                 {% endif %}
                                 {% endfor %}
                         </div>
-
                         {% if page < total_pages %} <a
-                            href="/market/indices?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                            href="/market/index?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
                             class="page-btn next-btn">
                             Вперед
                             <svg class="pagination-icon" viewBox="0 0 24 24">
@@ -711,7 +661,7 @@
                             {% endif %}
                     </div>
                     {% endif %}
-                    {% elif asset_type != 'indices' %}
+                    {% elif asset_type != 'index' %}
                     <div class="loading-state">
                         <div class="loading-spinner"></div>
                         <p>Загрузка данных...</p>
@@ -733,7 +683,6 @@
         </div>
     </div>
 </div>
-
 <!-- Модальное окно для быстрого добавления в портфель -->
 <div class="modal-overlay" id="addToPortfolioModal">
     <div class="modal-content">
@@ -741,7 +690,8 @@
             <h3 class="modal-title">Добавить в портфель</h3>
             <button class="modal-close" id="closeModalBtn">
                 <svg viewBox="0 0 24 24">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    <path
+                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                 </svg>
             </button>
         </div>
@@ -750,31 +700,26 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" id="assetTicker" name="ticker">
                 <input type="hidden" id="assetType" name="asset_type">
-                
                 <div class="asset-preview">
                     <div class="asset-preview-ticker" id="previewTicker"></div>
                     <div class="asset-preview-name" id="previewName"></div>
                 </div>
-                
                 <div class="form-group">
                     <label for="quantityInput">Количество:</label>
-                    <input type="number" id="quantityInput" name="quantity" 
-                           class="form-control" min="0.01" step="0.01" value="1" required>
+                    <input type="number" id="quantityInput" name="quantity" class="form-control" min="0.01" step="0.01"
+                        value="1" required>
                 </div>
-                
                 <div class="form-group">
                     <label for="priceInput">Цена покупки (₽):</label>
-                    <input type="number" id="priceInput" name="average_price" 
-                           class="form-control" min="0.01" step="0.01" value="0" required>
+                    <input type="number" id="priceInput" name="average_price" class="form-control" min="0.01"
+                        step="0.01" value="0" required>
                     <small class="form-hint">Оставьте 0, чтобы использовать текущую рыночную цену</small>
                 </div>
-                
                 <div class="form-group">
                     <label for="notesInput">Примечания (необязательно):</label>
                     <textarea id="notesInput" name="notes" class="form-control" rows="2"
-                              placeholder="Дополнительная информация..."></textarea>
+                        placeholder="Дополнительная информация..."></textarea>
                 </div>
-                
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" id="cancelBtn">Отмена</button>
                     <button type="submit" class="btn-primary">Добавить</button>
@@ -784,7 +729,6 @@
     </div>
 </div>
 {% endblock %}
-
 {% block extra_js %}
 <script src="/static/js/market.js"></script>
 <script src="/static/js/market-portfolio.js"></script>

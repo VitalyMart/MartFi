@@ -13,7 +13,7 @@ class IndicesDataProvider(IMarketDataProvider):
         return "moex:indices"
 
     def get_asset_type(self) -> str:
-        return "indices"
+        return "index"
 
     async def fetch_data(self) -> List[Dict[str, Any]]:
         try:
