@@ -1,14 +1,14 @@
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
 from ..auth.entities.user import User as DomainUser
 
-@dataclass
-class MainPageData:
+
+class MainPageData(BaseModel):
     user: DomainUser
     csrf_token: str
 
-@dataclass
-class MarketPageData:
+
+class MarketPageData(BaseModel):
     user: DomainUser
     csrf_token: str
     stocks: List[Dict[str, Any]]
@@ -19,8 +19,8 @@ class MarketPageData:
     total_pages: int
     total_count: int
 
-@dataclass
-class MarketStocksData:
+
+class MarketStocksData(BaseModel):
     stocks: List[Dict[str, Any]]
     pagination: Dict[str, Any]
     filters: Dict[str, Any]

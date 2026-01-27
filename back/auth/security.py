@@ -45,18 +45,6 @@ async def csrf_protect(request: Request, csrf_token: str = Form(...)):
     return True
 
 
-def validate_password(password: str) -> Tuple[bool, str]:
-    if len(password) < 8:
-        return False, "Пароль должен содержать минимум 8 символов"
-    if len(password) > 64:
-        return False, "Пароль слишком длинный"
-    if not any(c.isupper() for c in password):
-        return False, "Пароль должен содержать хотя бы одну заглавную букву"
-    if not any(c.islower() for c in password):
-        return False, "Пароль должен содержать хотя бы одну строчную букву"
-    if not any(c.isdigit() for c in password):
-        return False, "Пароль должен содержать хотя бы одну цифру"
-    return True, ""
 
 
 def verify_user_password(db: Session, email: str, password: str):
