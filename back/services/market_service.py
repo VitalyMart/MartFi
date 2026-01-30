@@ -28,7 +28,7 @@ class MarketService:
 
         cache_key = provider.get_cache_key()
         try:
-            cached_data = redis_client.get(cache_key)
+            cached_data = await redis_client.get(cache_key)
             if cached_data:
                 data = json.loads(cached_data)
                 logger.info(f"Loaded {len(data)} {asset_type} from cache")
@@ -38,7 +38,7 @@ class MarketService:
 
         data = await provider.fetch_data()
         try:
-            redis_client.setex(cache_key, self.cache_ttl, json.dumps(data))
+            await redis_client.setex(cache_key, self.cache_ttl, json.dumps(data))
             logger.info(f"Cached {len(data)} {asset_type} for {self.cache_ttl} seconds")
         except Exception as e:
             logger.error(f"Error caching {asset_type}: {e}")
@@ -167,7 +167,7 @@ class MarketService:
         try:
             data = await provider.fetch_data()
             cache_key = provider.get_cache_key()
-            redis_client.setex(cache_key, self.cache_ttl, json.dumps(data))
+            await redis_client.setex(cache_key, self.cache_ttl, json.dumps(data))
             return {
                 "success": True,
                 "message": f"{asset_type.capitalize()} cache refreshed successfully",

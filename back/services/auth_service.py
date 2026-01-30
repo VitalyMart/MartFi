@@ -40,7 +40,7 @@ class AuthService:
         if not user_id:
             return None
         try:
-            return self.user_repo.get_by_id(int(user_id))
+            return await self.user_repo.get_by_id(int(user_id))
         except (ValueError, TypeError):
             return None
 
@@ -77,7 +77,7 @@ class AuthService:
         )
 
     async def register_user(self, email: str, password: str, full_name: str, client_ip: str) -> RegistrationResult:
-        if is_registration_rate_limited(client_ip):
+        if await is_registration_rate_limited(client_ip):  # ДОБАВЬТЕ await
             logger.warning(f"Registration rate limit exceeded for IP: {client_ip}")
             raise RateLimitException("Too many registration attempts. Try again later")
         
@@ -88,21 +88,21 @@ class AuthService:
                 full_name=full_name
             )
         except Exception as e:
-            increment_registration_attempts(client_ip)
+            await increment_registration_attempts(client_ip)  # ДОБАВЬТЕ await
             raise ValidationException(str(e))
         
         try:
             validated_email = validate_email(registration_form.email).email
         except EmailNotValidError:
-            increment_registration_attempts(client_ip)
+            await increment_registration_attempts(client_ip)  # ДОБАВЬТЕ await
             raise ValidationException("Invalid email format")
         
-        if self.user_repo.email_exists(validated_email):
-            increment_registration_attempts(client_ip)
+        if await self.user_repo.email_exists(validated_email):  # ДОБАВЬТЕ await
+            await increment_registration_attempts(client_ip)  # ДОБАВЬТЕ await
             raise UserAlreadyExistsException("Email already registered")
         
         try:
-            user = self.user_repo.create(validated_email, registration_form.password, registration_form.full_name)
+            user = await self.user_repo.create(validated_email, registration_form.password, registration_form.full_name)  # ДОБАВЬТЕ await
             logger.info(f"User registered successfully: {validated_email}")
             return RegistrationResult(
                 success=True, 
@@ -111,7 +111,7 @@ class AuthService:
             )
         except Exception as e:
             logger.error(f"User creation error for {validated_email}: {e}")
-            increment_registration_attempts(client_ip)
+            await increment_registration_attempts(client_ip)  # ДОБАВЬТЕ await
             raise
 
     async def login_user(self, email: str, password: str, client_ip: str) -> LoginResult:
@@ -122,20 +122,20 @@ class AuthService:
             raise InvalidCredentialsException("Invalid email or password")
             
         login_key = get_login_rate_key(validated_email)
-        if is_rate_limited(login_key):
+        if await is_rate_limited(login_key):  # ДОБАВЬТЕ await - ВОТ ГДЕ ОШИБКА!
             logger.warning(f"Login rate limit exceeded for: {email}")
             raise RateLimitException("Too many login attempts")
         
-        user = self.user_repo.verify_credentials(validated_email, login_form.password)
+        user = await self.user_repo.verify_credentials(validated_email, login_form.password)  # ДОБАВЬТЕ await
         if not user:
-            increment_rate_limit(login_key)
+            await increment_rate_limit(login_key)  # ДОБАВЬТЕ await
             logger.warning(f"Failed login attempt for: {email}")
             raise InvalidCredentialsException("Invalid email or password")
         
-        clear_rate_limit(login_key)
+        await clear_rate_limit(login_key)  # ДОБАВЬТЕ await
         access_token = create_access_token(user.id)
         try:
-            redis_client.setex(f"session:{user.id}", settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, "active")
+            await redis_client.setex(f"session:{user.id}", settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, "active")  # ДОБАВЬТЕ await
         except Exception as e:
             logger.error(f"Redis error storing session: {e}")
         
@@ -154,8 +154,8 @@ class AuthService:
                 if payload and payload.get("sub"):
                     user_id = payload.get("sub")
                 try:
-                    redis_client.delete(f"session:{user_id}")
-                    redis_client.delete(f"token:{user_id}")
+                    await redis_client.delete(f"session:{user_id}")  # ДОБАВЬТЕ await
+                    await redis_client.delete(f"token:{user_id}")  # ДОБАВЬТЕ await
                 except Exception as e:
                     logger.error(f"Redis error during logout: {e}")
             except Exception as e:

@@ -23,7 +23,7 @@ class PortfolioService:
         csrf_token = await self.security_service.get_csrf_token(request)
         
         
-        portfolio_items = self.portfolio_repo.get_user_portfolio(current_user.id)
+        portfolio_items = await self.portfolio_repo.get_user_portfolio(current_user.id)
         
         
         enriched_items = await self._enrich_portfolio_items(portfolio_items)
@@ -124,20 +124,20 @@ class PortfolioService:
         }
         return display_map.get(asset_type, asset_type)
     
-    def add_to_portfolio(self, user_id: int, ticker: str, asset_type: str, quantity: float, average_price: float = 0.0, notes: str = "") -> Optional[Dict[str, Any]]:
+    async def add_to_portfolio(self, user_id: int, ticker: str, asset_type: str, quantity: float, average_price: float = 0.0, notes: str = "") -> Optional[Dict[str, Any]]:
         if asset_type == 'index':
             return None
     
-        return self.portfolio_repo.add_to_portfolio(user_id, ticker, asset_type, quantity, average_price, notes)
+        return await self.portfolio_repo.add_to_portfolio(user_id, ticker, asset_type, quantity, average_price, notes)
     
-    def remove_from_portfolio(self, user_id: int, portfolio_item_id: int) -> bool:
-        return self.portfolio_repo.remove_from_portfolio(user_id, portfolio_item_id)
+    async def remove_from_portfolio(self, user_id: int, portfolio_item_id: int) -> bool:
+        return await self.portfolio_repo.remove_from_portfolio(user_id, portfolio_item_id)
     
-    def update_portfolio_item(self, user_id: int, portfolio_item_id: int, 
-                             quantity: Optional[float] = None, 
-                             average_price: Optional[float] = None,
-                             notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        return self.portfolio_repo.update_portfolio_item(user_id, portfolio_item_id, quantity, average_price, notes)
+    async def update_portfolio_item(self, user_id: int, portfolio_item_id: int, 
+                                   quantity: Optional[float] = None, 
+                                   average_price: Optional[float] = None,
+                                   notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        return await self.portfolio_repo.update_portfolio_item(user_id, portfolio_item_id, quantity, average_price, notes)
     
     async def quick_add_to_portfolio(self, user_id: int, ticker: str, asset_type: str, 
                                     quantity: float, price: float = None) -> Optional[Dict[str, Any]]:
@@ -164,7 +164,7 @@ class PortfolioService:
                 logger.error(f"Error getting market price for {ticker}: {e}")
                 price = 0
         
-        return self.portfolio_repo.add_to_portfolio(
+        return await self.portfolio_repo.add_to_portfolio(
             user_id=user_id,
             ticker=ticker,
             asset_type=asset_type,

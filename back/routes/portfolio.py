@@ -58,7 +58,7 @@ async def add_to_portfolio(
         }, status_code=400)
     
     try:
-        result = portfolio_service.add_to_portfolio(
+        result = await portfolio_service.add_to_portfolio(
             user_id=current_user.id,
             ticker=ticker,
             asset_type=asset_type,
@@ -98,7 +98,7 @@ async def remove_from_portfolio(
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        success = portfolio_service.remove_from_portfolio(current_user.id, item_id)
+        success = await portfolio_service.remove_from_portfolio(current_user.id, item_id)
         
         if success:
             return JSONResponse({

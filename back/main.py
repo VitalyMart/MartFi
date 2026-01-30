@@ -6,8 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from .config import settings
-from .database import create_tables
-from .database.models import Stock
+from .database import create_tables, async_engine
 from .core.logger import logger
 from .routes.auth import router as auth_router
 from .routes.main import router as main_router
@@ -16,7 +15,7 @@ from .routes.portfolio import router as portfolio_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_tables()
+    await create_tables()
     logger.info("Application started successfully")
     yield
     logger.info("Application shutting down")

@@ -1,16 +1,20 @@
 from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, update
+from sqlalchemy.orm import selectinload
 from ..models.portfolio import PortfolioItem as ORMPortfolioItem
 from ...core.logger import logger
 
 class PortfolioRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
     
-    def get_user_portfolio(self, user_id: int) -> List[Dict[str, Any]]:
-        items = self.db.query(ORMPortfolioItem).filter(
+    async def get_user_portfolio(self, user_id: int) -> List[Dict[str, Any]]:
+        stmt = select(ORMPortfolioItem).where(
             ORMPortfolioItem.user_id == user_id
-        ).all()
+        )
+        result = await self.db.execute(stmt)
+        items = result.scalars().all()
         
         return [
             {
@@ -25,14 +29,16 @@ class PortfolioRepository:
             for item in items
         ]
     
-    def add_to_portfolio(self, user_id: int, ticker: str, asset_type: str, 
-                         quantity: float, average_price: float = 0.0, notes: str = "") -> Optional[Dict[str, Any]]:
+    async def add_to_portfolio(self, user_id: int, ticker: str, asset_type: str, 
+                              quantity: float, average_price: float = 0.0, notes: str = "") -> Optional[Dict[str, Any]]:
         try:
-            existing = self.db.query(ORMPortfolioItem).filter(
+            stmt = select(ORMPortfolioItem).where(
                 ORMPortfolioItem.user_id == user_id,
                 ORMPortfolioItem.ticker == ticker,
                 ORMPortfolioItem.asset_type == asset_type
-            ).first()
+            )
+            result = await self.db.execute(stmt)
+            existing = result.scalar_one_or_none()
             
             if existing:
                 existing.quantity += quantity
@@ -52,8 +58,8 @@ class PortfolioRepository:
                 )
                 self.db.add(existing)
             
-            self.db.commit()
-            self.db.refresh(existing)
+            await self.db.commit()
+            await self.db.refresh(existing)
             
             return {
                 'id': existing.id,
@@ -65,38 +71,37 @@ class PortfolioRepository:
             }
             
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error adding to portfolio: {e}")
             return None
     
-    def remove_from_portfolio(self, user_id: int, portfolio_item_id: int) -> bool:
+    async def remove_from_portfolio(self, user_id: int, portfolio_item_id: int) -> bool:
         try:
-            item = self.db.query(ORMPortfolioItem).filter(
+            stmt = delete(ORMPortfolioItem).where(
                 ORMPortfolioItem.id == portfolio_item_id,
                 ORMPortfolioItem.user_id == user_id
-            ).first()
+            )
+            result = await self.db.execute(stmt)
+            await self.db.commit()
             
-            if not item:
-                return False
-            
-            self.db.delete(item)
-            self.db.commit()
-            return True
+            return result.rowcount > 0
             
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error removing from portfolio: {e}")
             return False
     
-    def update_portfolio_item(self, user_id: int, portfolio_item_id: int, 
-                             quantity: Optional[float] = None, 
-                             average_price: Optional[float] = None,
-                             notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def update_portfolio_item(self, user_id: int, portfolio_item_id: int, 
+                                   quantity: Optional[float] = None, 
+                                   average_price: Optional[float] = None,
+                                   notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
         try:
-            item = self.db.query(ORMPortfolioItem).filter(
+            stmt = select(ORMPortfolioItem).where(
                 ORMPortfolioItem.id == portfolio_item_id,
                 ORMPortfolioItem.user_id == user_id
-            ).first()
+            )
+            result = await self.db.execute(stmt)
+            item = result.scalar_one_or_none()
             
             if not item:
                 return None
@@ -108,8 +113,8 @@ class PortfolioRepository:
             if notes is not None:
                 item.notes = notes
             
-            self.db.commit()
-            self.db.refresh(item)
+            await self.db.commit()
+            await self.db.refresh(item)
             
             return {
                 'id': item.id,
@@ -121,6 +126,6 @@ class PortfolioRepository:
             }
             
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error updating portfolio item: {e}")
             return None
