@@ -34,23 +34,6 @@ services:
       timeout: 10s
       retries: 3
 
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql+asyncpg://martfi_user:${POSTGRES_PASSWORD:-martfi_password}@postgres:5432/martfi
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here}
-    networks:
-      - app-network
-    command: uvicorn back.main:app --host 0.0.0.0 --port 8000 --reload
-
 volumes:
   postgres_data:
   redis_data:
