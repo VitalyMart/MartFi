@@ -22,12 +22,9 @@ class PortfolioService:
         
         csrf_token = await self.security_service.get_csrf_token(request)
         
-        
         portfolio_items = await self.portfolio_repo.get_user_portfolio(current_user.id)
         
-        
         enriched_items = await self._enrich_portfolio_items(portfolio_items)
-        
         
         portfolio_summary = await self._calculate_portfolio_summary(enriched_items)
         
@@ -43,20 +40,24 @@ class PortfolioService:
         
         for item in portfolio_items:
             try:
-                
                 market_data = await self.market_service.get_cached_data(item['asset_type'])
                 
-                
                 current_data = next(
-                    (stock for stock in market_data if stock['ticker'] == item['ticker']),
+                    (asset for asset in market_data if asset['ticker'] == item['ticker']),
                     None
                 )
                 
                 if current_data:
-                    current_price = current_data.get('price', 0)
-                    current_change = current_data.get('change', 0)
-                    current_change_percent = current_data.get('change_percent', 0)
+                    # Для облигаций используем цену в рублях, для остальных - обычную цену
+                    if item['asset_type'] == 'bond':
+                        current_price = current_data.get('price_rub', 0)  # Цена в рублях
+                        # Для облигаций изменение в процентах уже рассчитано правильно
+                        current_change_percent = current_data.get('change_percent', 0)
+                    else:
+                        current_price = current_data.get('price', 0)
+                        current_change_percent = current_data.get('change_percent', 0)
                     
+                    current_change = current_data.get('change', 0)
                     
                     purchase_value = item['quantity'] * item['average_price']
                     current_value = item['quantity'] * current_price
@@ -75,6 +76,14 @@ class PortfolioService:
                         'name': current_data.get('name', item['ticker']),
                         'asset_type_display': self._get_asset_type_display(item['asset_type'])
                     }
+                    
+                    # Добавляем дополнительную информацию для облигаций
+                    if item['asset_type'] == 'bond':
+                        enriched_item['nominal'] = current_data.get('nominal', 1000)
+                        enriched_item['yield'] = current_data.get('yield', 0)
+                        enriched_item['coupon_value'] = current_data.get('coupon_value', 0)
+                        enriched_item['maturity_date'] = current_data.get('maturity_date', '')
+                    
                     enriched_items.append(enriched_item)
                     
             except Exception as e:
@@ -97,7 +106,6 @@ class PortfolioService:
         total_current_value = sum(item.get('current_value', 0) for item in portfolio_items)
         total_change = total_current_value - total_purchase_value
         total_change_percent = (total_change / total_purchase_value * 100) if total_purchase_value > 0 else 0
-        
         
         asset_distribution = {}
         for item in portfolio_items:
@@ -148,7 +156,6 @@ class PortfolioService:
         if asset_type == 'index':
             return None
         
-        
         if price is None or price == 0:
             try:
                 market_data = await self.market_service.get_cached_data(asset_type)
@@ -156,8 +163,12 @@ class PortfolioService:
                     (item for item in market_data if item['ticker'] == ticker),
                     None
                 )
-                if asset_data and asset_data.get('price', 0) > 0:
-                    price = asset_data['price']
+                if asset_data:
+                    # Для облигаций используем цену в рублях
+                    if asset_type == 'bond':
+                        price = asset_data.get('price_rub', 0)
+                    else:
+                        price = asset_data.get('price', 0)
                 else:
                     price = 0
             except Exception as e:

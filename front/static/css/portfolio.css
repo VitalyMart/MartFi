@@ -460,6 +460,42 @@
     margin-top: 2rem;
 }
 
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    justify-content: center;
+    line-height: 1;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.empty-portfolio .btn-primary {
+    margin-top: 1rem;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
     .portfolio-header {

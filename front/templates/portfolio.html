@@ -33,13 +33,13 @@
             <div class="summary-content">
                 <div class="summary-label">Текущая стоимость</div>
                 <div class="summary-value {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
-                    {{ "%.2f"|format(portfolio_summary.total_current_value) }} ₽
+                    {{ "{:,.2f}".format(portfolio_summary.total_current_value).replace(",", " ") }} ₽
                 </div>
                 <div class="summary-change {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
                     {% if portfolio_summary.total_change >= 0 %}+{% endif %}
-                    {{ "%.2f"|format(portfolio_summary.total_change) }} ₽
+                    {{ "{:,.2f}".format(portfolio_summary.total_change).replace(",", " ") }} ₽
                     ({% if portfolio_summary.total_change_percent >= 0 %}+{% endif %}
-                    {{ "%.2f"|format(portfolio_summary.total_change_percent) }}%)
+                    {{ "{:,.2f}".format(portfolio_summary.total_change_percent).replace(",", " ") }}%)
                 </div>
             </div>
         </div>
@@ -53,7 +53,7 @@
             <div class="summary-content">
                 <div class="summary-label">Инвестировано</div>
                 <div class="summary-value">
-                    {{ "%.2f"|format(portfolio_summary.total_purchase_value) }} ₽
+                    {{ "{:,.2f}".format(portfolio_summary.total_purchase_value).replace(",", " ") }} ₽
                 </div>
                 <div class="summary-meta">{{ portfolio_summary.item_count }} активов</div>
             </div>
@@ -102,19 +102,19 @@
                                 {{ item.asset_type_display }}
                             </span>
                         </td>
-                        <td class="quantity-cell">{{ "%.2f"|format(item.quantity) }}</td>
-                        <td class="avg-price-cell">{{ "%.2f"|format(item.average_price) }} ₽</td>
-                        <td class="current-price-cell">{{ "%.2f"|format(item.current_price) }} ₽</td>
-                        <td class="current-value-cell">{{ "%.2f"|format(item.current_value) }} ₽</td>
+                        <td class="quantity-cell">{{ "{:,.2f}".format(item.quantity).replace(",", " ") }}</td>
+                        <td class="avg-price-cell">{{ "{:,.2f}".format(item.average_price).replace(",", " ") }} ₽</td>
+                        <td class="current-price-cell">{{ "{:,.2f}".format(item.current_price).replace(",", " ") }} ₽</td>
+                        <td class="current-value-cell">{{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽</td>
                         <td class="change-cell">
                             <div class="change-wrapper {% if item.total_change >= 0 %}positive{% else %}negative{% endif %}">
                                 <span class="change-amount">
                                     {% if item.total_change >= 0 %}+{% endif %}
-                                    {{ "%.2f"|format(item.total_change) }} ₽
+                                    {{ "{:,.2f}".format(item.total_change).replace(",", " ") }} ₽
                                 </span>
                                 <span class="change-percent">
                                     ({% if item.total_change_percent >= 0 %}+{% endif %}
-                                    {{ "%.2f"|format(item.total_change_percent) }}%)
+                                    {{ "{:,.2f}".format(item.total_change_percent).replace(",", " ") }}%)
                                 </span>
                             </div>
                         </td>
