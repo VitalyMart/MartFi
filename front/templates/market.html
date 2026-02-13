@@ -133,7 +133,6 @@
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ stock.ticker }}</div>
                                 <div class="asset-actions">
-                                    <!-- Кнопка добавления в портфель -->
                                     <button class="add-to-portfolio-btn" data-ticker="{{ stock.ticker }}"
                                         data-name="{{ stock.name }}" data-asset-type="stock"
                                         data-price="{{ stock.price }}" title="Добавить в портфель">
@@ -236,130 +235,123 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- Вкладка Облигации -->
-            <div class="tab-pane {% if asset_type == 'bond' %}active{% endif %}" id="bond">
-                <div class="assets-container">
-                    {% if stocks and asset_type == 'bond' %}
-                    <div class="assets-grid">
-                        {% for bond in stocks %}
-                        <div class="asset-card bond-card">
-                            <div class="asset-header">
-                                <div class="asset-ticker">{{ bond.ticker }}</div>
-                                <div class="asset-actions">
-                                    <!-- Кнопка добавления в портфель -->
-                                    <button class="add-to-portfolio-btn" data-ticker="{{ bond.ticker }}"
-                                        data-name="{{ bond.name }}" data-asset-type="bond" data-price="{{ bond.price }}"
-                                        title="Добавить в портфель">
-                                        <svg class="add-icon" viewBox="0 0 24 24">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                                        </svg>
-                                    </button>
-                                    <div
-                                        class="asset-price {% if bond.change > 0 %}positive{% elif bond.change < 0 %}negative{% endif %}">
-                                        {% if bond.price > 0 %}
-                                        {{ "%.2f"|format(bond.price) }} %
-                                        {% else %}
-                                        Нет данных
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="asset-body">
-                                <h3 class="asset-name">{{ bond.name }}</h3>
-                                {% if bond.full_name %}
-                                <p class="asset-fullname">{{ bond.full_name|truncate(50) }}</p>
-                                {% endif %}
-                                <div class="asset-details">
-                                    {% if bond.maturity_date %}
-                                    <span class="asset-tag">Погашение: {{ bond.maturity_date[:10] }}</span>
-                                    {% endif %}
-                                    {% if bond.coupon_value > 0 %}
-                                    <span class="asset-tag">Купон: {{ "%.2f"|format(bond.coupon_value) }}%</span>
-                                    {% endif %}
-                                    {% if bond.currency %}
-                                    <span class="asset-tag">Валюта: {{ bond.currency }}</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="asset-footer">
-                                <div class="change-info">
-                                    {% if bond.yield > 0 %}
-                                    <div class="bond-yield positive">
-                                        Доходность: {{ "%.2f"|format(bond.yield) }}%
-                                    </div>
-                                    {% endif %}
-                                    <div
-                                        class="change-amount {% if bond.change > 0 %}positive{% elif bond.change < 0 %}negative{% endif %}">
-                                        {% if bond.change > 0 %}+{% endif %}
-                                        {% if bond.change != 0 %}
-                                        {{ "%.2f"|format(bond.change) }} ₽
-                                        {% else %}
-                                        0.00 ₽
-                                        {% endif %}
-                                    </div>
-                                    {% if bond.change_percent != 0 %}
-                                    <div
-                                        class="change-percent {% if bond.change_percent > 0 %}positive{% elif bond.change_percent < 0 %}negative{% endif %}">
-                                        {% if bond.change_percent > 0 %}+{% endif %}
-                                        {{ "%.2f"|format(bond.change_percent) }}%
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% if total_pages > 1 %}
-                    <div class="pagination">
-                        {% if page > 1 %}
-                        <a href="/market/bond?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
-                            class="page-btn prev-btn">
-                            <svg class="pagination-icon" viewBox="0 0 24 24">
-                                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+<!-- Вкладка Облигации - исправлено в стиле asset-tag -->
+<div class="tab-pane {% if asset_type == 'bond' %}active{% endif %}" id="bond">
+    <div class="assets-container">
+        {% if stocks and asset_type == 'bond' %}
+        <div class="assets-grid">
+            {% for bond in stocks %}
+            <div class="asset-card bond-card">
+                <div class="asset-header">
+                    <div class="asset-ticker">{{ bond.ticker }}</div>
+                    <div class="asset-actions">
+                        <button class="add-to-portfolio-btn" data-ticker="{{ bond.ticker }}"
+                            data-name="{{ bond.name }}" data-asset-type="bond" 
+                            data-price="{{ bond.price_rub if bond.price_rub else bond.price * 10 }}"
+                            title="Добавить в портфель">
+                            <svg class="add-icon" viewBox="0 0 24 24">
+                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                             </svg>
-                            Назад
-                        </a>
-                        {% endif %}
-                        <div class="page-numbers">
-                            {% for p in range(1, total_pages + 1) %}
-                            {% if p == page %}
-                            <span class="page-number active">{{ p }}</span>
-                            {% elif p >= page - 2 and p <= page + 2 %} <a
-                                href="/market/bond?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
-                                class="page-number">{{ p }}</a>
-                                {% endif %}
-                                {% endfor %}
-                        </div>
-                        {% if page < total_pages %} <a
-                            href="/market/bond?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
-                            class="page-btn next-btn">
-                            Вперед
-                            <svg class="pagination-icon" viewBox="0 0 24 24">
-                                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                            </svg>
-                            </a>
+                        </button>
+                        <div class="asset-price">
+                            {% if bond.price and bond.price > 0 %}
+                            {{ "%.2f"|format(bond.price) }}%
+                            {% else %}
+                            Нет данных
                             {% endif %}
+                        </div>
                     </div>
+                </div>
+                <div class="asset-body">
+                    <h3 class="asset-name">{{ bond.name }}</h3>
+                    {% if bond.full_name %}
+                    <p class="asset-fullname">{{ bond.full_name|truncate(50) }}</p>
                     {% endif %}
-                    {% elif asset_type != 'bond' %}
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p>Загрузка данных...</p>
-                    </div>
-                    {% else %}
-                    <div class="empty-state">
-                        <svg class="empty-icon" viewBox="0 0 24 24">
-                            <path
-                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                        </svg>
-                        <h3>Не удалось загрузить данные по облигациям</h3>
-                        {% if search_query %}
-                        <p>Попробуйте изменить поисковый запрос</p>
+                    <div class="asset-details">
+                        {% if bond.nominal and bond.nominal > 0 %}
+                        <span class="asset-tag">Номинал: {{ "{:,.0f}".format(bond.nominal).replace(',', ' ') }} ₽</span>
+                        {% endif %}
+                        {% if bond.price_rub and bond.price_rub > 0 %}
+                        <span class="asset-tag">Цена: {{ "{:,.2f}".format(bond.price_rub).replace(',', ' ') }} ₽</span>
+                        {% endif %}
+                        {% if bond.maturity_date %}
+                        <span class="asset-tag">Погашение: {{ bond.maturity_date[:10] }}</span>
+                        {% endif %}
+                        {% if bond.coupon_value and bond.coupon_value > 0 %}
+                        <span class="asset-tag">Купон: {{ "%.2f"|format(bond.coupon_value) }}%</span>
+                        {% endif %}
+                        {% if bond.currency %}
+                        <span class="asset-tag">Валюта: {{ bond.currency }}</span>
                         {% endif %}
                     </div>
-                    {% endif %}
+                </div>
+                <div class="asset-footer">
+                    <div class="change-info">
+                        {% if bond.yield and bond.yield > 0 %}
+                        <div class="bond-yield positive">
+                            Доходность: {{ "%.2f"|format(bond.yield) }}%
+                        </div>
+                        {% endif %}
+                        {% if bond.change_percent and bond.change_percent != 0 %}
+                        <div
+                            class="change-percent {% if bond.change_percent > 0 %}positive{% elif bond.change_percent < 0 %}negative{% endif %}">
+                            {% if bond.change_percent > 0 %}+{% endif %}
+                            {{ "%.2f"|format(bond.change_percent) }}%
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            {% endfor %}
+        </div>
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="/market/bond?page={{ page-1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+                class="page-btn prev-btn">
+                <svg class="pagination-icon" viewBox="0 0 24 24">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+                </svg>
+                Назад
+            </a>
+            {% endif %}
+            <div class="page-numbers">
+                {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                <span class="page-number active">{{ p }}</span>
+                {% elif p >= page - 2 and p <= page + 2 %} 
+                <a href="/market/bond?page={{ p }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="page-number">{{ p }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% if page < total_pages %} 
+            <a href="/market/bond?page={{ page+1 }}&search={{ search_query }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="page-btn next-btn">
+                Вперед
+                <svg class="pagination-icon" viewBox="0 0 24 24">
+                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% elif asset_type != 'bond' %}
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Загрузка данных...</p>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg class="empty-icon" viewBox="0 0 24 24">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+            <h3>Не удалось загрузить данные по облигациям</h3>
+            {% if search_query %}
+            <p>Попробуйте изменить поисковый запрос</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
             <!-- Вкладка Фонды -->
             <div class="tab-pane {% if asset_type == 'fund' %}active{% endif %}" id="fund">
                 <div class="assets-container">
@@ -370,7 +362,6 @@
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ fund.ticker }}</div>
                                 <div class="asset-actions">
-                                    <!-- Кнопка добавления в портфель -->
                                     <button class="add-to-portfolio-btn" data-ticker="{{ fund.ticker }}"
                                         data-name="{{ fund.name }}" data-asset-type="fund" data-price="{{ fund.price }}"
                                         title="Добавить в портфель">
@@ -486,7 +477,6 @@
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ currency.ticker }}</div>
                                 <div class="asset-actions">
-                                    <!-- Кнопка добавления в портфель -->
                                     <button class="add-to-portfolio-btn" data-ticker="{{ currency.ticker }}"
                                         data-name="{{ currency.name }}" data-asset-type="currency"
                                         data-price="{{ currency.price }}" title="Добавить в портфель">
@@ -587,7 +577,6 @@
                             <div class="asset-header">
                                 <div class="asset-ticker">{{ index.ticker }}</div>
                                 <div class="asset-actions">
-                                    <!-- Индексы нельзя добавлять в портфель, поэтому кнопка отключена -->
                                     <button class="add-to-portfolio-btn disabled"
                                         title="Индексы нельзя добавлять в портфель" disabled>
                                         <svg class="add-icon" viewBox="0 0 24 24">
@@ -683,7 +672,6 @@
         </div>
     </div>
 </div>
-<!-- Модальное окно для быстрого добавления в портфель -->
 <div class="modal-overlay" id="addToPortfolioModal">
     <div class="modal-content">
         <div class="modal-header">

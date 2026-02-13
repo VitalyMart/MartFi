@@ -46,11 +46,22 @@ class StocksDataProvider(IMarketDataProvider):
                 for item in market_data:
                     if item and len(item) >= 7:
                         ticker = item[0]
+                        price = float(item[1]) if item[1] is not None else 0
+                        change_rub = float(item[2]) if item[2] is not None else 0
+                        change_percent_api = float(item[4]) if item[4] is not None else 0
+                        
+                        # ПЕРЕСЧИТЫВАЕМ ПРОЦЕНТ ИЗМЕНЕНИЯ ДЛЯ ВСЕХ АКЦИЙ
+                        calculated_change_percent = 0
+                        if price > 0 and change_rub != 0:
+                            prev_price = price - change_rub
+                            if prev_price > 0:
+                                calculated_change_percent = (change_rub / prev_price) * 100
+                        
                         market_dict[ticker] = {
-                            'price': float(item[1]) if item[1] is not None else 0,
-                            'change': float(item[2]) if item[2] is not None else 0,
+                            'price': price,
+                            'change': change_rub,
                             'open': float(item[3]) if item[3] is not None else 0,
-                            'change_percent': float(item[4]) if item[4] is not None else 0,
+                            'change_percent': calculated_change_percent,  # ИСПОЛЬЗУЕМ ПЕРЕСЧИТАННОЕ ЗНАЧЕНИЕ
                             'volume': float(item[5]) if item[5] is not None else 0,
                             'update_time': item[6] if len(item) > 6 else None,
                         }
@@ -65,10 +76,12 @@ class StocksDataProvider(IMarketDataProvider):
                     isin = security[3] if len(security) > 3 else None
                     regnumber = security[4] if len(security) > 4 else None
                     lotsize = int(security[5]) if len(security) > 5 and security[5] else 1
+                    
                     market_info = market_dict.get(
                         ticker,
                         {'price': 0, 'change': 0, 'open': 0, 'change_percent': 0, 'volume': 0, 'update_time': None},
                     )
+                    
                     result.append({
                         'ticker': ticker,
                         'name': name,
@@ -76,7 +89,7 @@ class StocksDataProvider(IMarketDataProvider):
                         'price': market_info['price'],
                         'change': market_info['change'],
                         'open_price': market_info['open'],
-                        'change_percent': market_info['change_percent'],
+                        'change_percent': market_info['change_percent'],  # ТЕПЕРЬ ЗДЕСЬ ПРАВИЛЬНЫЕ ПРОЦЕНТЫ
                         'volume': market_info['volume'],
                         'update_time': market_info['update_time'],
                         'isin': isin,
@@ -84,7 +97,8 @@ class StocksDataProvider(IMarketDataProvider):
                         'lotsize': lotsize,
                         'last_updated': datetime.now().isoformat(),
                     })
-                logger.info(f"Fetched {len(result)} stocks from MOEX")
+                    
+                logger.info(f"Fetched {len(result)} stocks from MOEX with recalculated percentages")
                 return result
 
         except aiohttp.ClientError as e:

@@ -49,11 +49,21 @@ class FundsDataProvider(IMarketDataProvider):
                 for item in market_data:
                     if item and len(item) >= 7:
                         ticker = item[0]
+                        price = float(item[1]) if item[1] is not None else 0
+                        change_rub = float(item[2]) if item[2] is not None else 0
+                        
+            
+                        calculated_change_percent = 0
+                        if price > 0 and change_rub != 0:
+                            prev_price = price - change_rub
+                            if prev_price > 0:
+                                calculated_change_percent = (change_rub / prev_price) * 100
+                        
                         market_dict[ticker] = {
-                            'price': float(item[1]) if item[1] is not None else 0,
-                            'change': float(item[2]) if item[2] is not None else 0,
+                            'price': price,
+                            'change': change_rub,
                             'open': float(item[3]) if item[3] is not None else 0,
-                            'change_percent': float(item[4]) if item[4] is not None else 0,
+                            'change_percent': calculated_change_percent,  
                             'volume': float(item[5]) if item[5] is not None else 0,
                             'update_time': item[6] if len(item) > 6 else None,
                         }
@@ -82,7 +92,7 @@ class FundsDataProvider(IMarketDataProvider):
                         'price': market_info['price'],
                         'change': market_info['change'],
                         'open_price': market_info['open'],
-                        'change_percent': market_info['change_percent'],
+                        'change_percent': market_info['change_percent'],  # ТЕПЕРЬ ПРАВИЛЬНЫЕ ПРОЦЕНТЫ
                         'volume': market_info['volume'],
                         'update_time': market_info['update_time'],
                         'isin': isin,
@@ -92,7 +102,7 @@ class FundsDataProvider(IMarketDataProvider):
                         'asset_type': 'fund',
                     })
                 
-                logger.info(f"Fetched {len(result)} funds from MOEX")
+                logger.info(f"Fetched {len(result)} funds from MOEX with recalculated percentages")
                 return result
 
         except aiohttp.ClientError as e:

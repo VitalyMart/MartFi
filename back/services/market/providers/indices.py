@@ -140,15 +140,11 @@ class IndicesDataProvider(IMarketDataProvider):
                                 except (ValueError, TypeError):
                                     continue
                     
-                    for pct_field in ['LASTCHANGEPRC', 'CHANGEPRC']:
-                        if pct_field in marketdata_columns:
-                            pct_idx = marketdata_columns.index(pct_field)
-                            if market_item[pct_idx] is not None:
-                                try:
-                                    change_percent = float(market_item[pct_idx])
-                                    break
-                                except (ValueError, TypeError):
-                                    continue
+     
+                    if price > 0 and change != 0:
+                        prev_price = price - change
+                        if prev_price > 0:
+                            change_percent = (change / prev_price) * 100
                     
                     for open_field in ['OPENVALUE', 'OPEN']:
                         if open_field in marketdata_columns:
@@ -187,7 +183,7 @@ class IndicesDataProvider(IMarketDataProvider):
                     'price': price,
                     'change': change,
                     'open_price': open_price,
-                    'change_percent': change_percent,
+                    'change_percent': change_percent,  
                     'volume': 0,
                     'update_time': datetime.now().strftime("%H:%M:%S"),
                     'high': high,
