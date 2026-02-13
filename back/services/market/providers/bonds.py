@@ -7,8 +7,6 @@ from back.core.logger import logger
 class BondsDataProvider(IMarketDataProvider):
     def __init__(self, moex_base_url: str):
         self.moex_base_url = moex_base_url.rstrip('/')
-        self.NOMINAL = 1000  # Номинал облигации в рублях
-        # Все доски облигаций на Московской бирже
         self.bond_boards = ['TQOB', 'TQCB', 'TQDB', 'TQRB', 'TQPB', 'TQNB']
 
     def get_cache_key(self) -> str:
@@ -35,7 +33,7 @@ class BondsDataProvider(IMarketDataProvider):
         url = f"{self.moex_base_url}/engines/stock/markets/bonds/securities.json"
         params = {
             'iss.meta': 'off',
-            'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,MATDATE,COUPONVALUE,COUPONPERIOD,NEXTCOUPON,CURRENCYID,PREVPRICE,PREVWAPRICE,LOTSIZE,ISSUESIZE'
+            'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,MATDATE,COUPONVALUE,COUPONPERIOD,NEXTCOUPON,CURRENCYID,PREVPRICE,PREVWAPRICE,LOTSIZE,ISSUESIZE,FACEVALUE,FACEUNIT'
         }
         
         try:
@@ -56,14 +54,12 @@ class BondsDataProvider(IMarketDataProvider):
             return {}
 
     async def _fetch_market_data_all_boards(self) -> Dict[str, Dict[str, Any]]:
-        """Собирает рыночные данные со всех досок облигаций"""
         all_market_data = {}
         
         async with aiohttp.ClientSession() as session:
             for board in self.bond_boards:
                 try:
                     board_data = await self._fetch_board_market_data(session, board)
-                    # Объединяем данные, приоритет у TQOB (ОФЗ) если есть дубликаты
                     for ticker, data in board_data.items():
                         if ticker not in all_market_data or board == 'TQOB':
                             all_market_data[ticker] = data
@@ -75,7 +71,6 @@ class BondsDataProvider(IMarketDataProvider):
         return all_market_data
 
     async def _fetch_board_market_data(self, session: aiohttp.ClientSession, board: str) -> Dict[str, Dict[str, Any]]:
-        """Собирает рыночные данные с конкретной доски"""
         url = f"{self.moex_base_url}/engines/stock/markets/bonds/boards/{board}/securities.json"
         params = {
             'iss.meta': 'off',
@@ -122,6 +117,8 @@ class BondsDataProvider(IMarketDataProvider):
                              self._safe_float(row, col_index.get('PREVPRICE')),
                 'lotsize': self._safe_int(row, col_index.get('LOTSIZE'), 1),
                 'issue_size': self._safe_float(row, col_index.get('ISSUESIZE'), 0.0),
+                'facevalue': self._safe_float(row, col_index.get('FACEVALUE'), 0.0),
+                'faceunit': self._safe_str(row, col_index.get('FACEUNIT'), 'RUB'),
             }
         
         logger.info(f"Parsed {len(result)} securities")
@@ -142,21 +139,10 @@ class BondsDataProvider(IMarketDataProvider):
                 continue
             
             change_rub = self._safe_float(row, col_index.get('LASTTOPREVPRICE'), 0.0)
-            
-            change_percent = 0.0
-            if change_rub != 0:
-                # Расчет процента изменения на основе цены в рублях
-                price_rub = last * 10
-                prev_price_rub = price_rub - change_rub
-                if prev_price_rub > 0:
-                    change_percent = (change_rub / prev_price_rub) * 100
-            else:
-                # Если нет изменения в рублях, используем CHANGE если он есть
-                change_percent = self._safe_float(row, col_index.get('CHANGE'), 0.0)
+            change_percent = self._safe_float(row, col_index.get('CHANGE'), 0.0)
             
             result[ticker] = {
                 'price': last,
-                'price_rub': round(last * 10, 2),  # Цена в рублях
                 'change_percent': round(change_percent, 3),
                 'yield': self._safe_float(row, col_index.get('YIELD'), 0.0),
                 'open': self._safe_float(row, col_index.get('OPEN'), 0.0),
@@ -164,7 +150,7 @@ class BondsDataProvider(IMarketDataProvider):
                 'low': self._safe_float(row, col_index.get('LOW'), 0.0),
                 'volume': self._safe_float(row, col_index.get('VALUE'), 0.0),
                 'update_time': self._safe_str(row, col_index.get('UPDATETIME')),
-                'board': board,  # Сохраняем информацию о доске
+                'board': board,
             }
         
         logger.debug(f"Parsed {len(result)} market data entries from board {board}")
@@ -176,21 +162,40 @@ class BondsDataProvider(IMarketDataProvider):
         for ticker, sec in securities.items():
             mkt = market.get(ticker)
             
-            # Пропускаем облигации без рыночных данных
             if not mkt:
                 continue
             
-            # Проверяем, что цена валидная
             if mkt['price'] <= 0:
                 continue
             
-            result.append({
+            # Получаем данные облигации
+            facevalue = sec.get('facevalue', 0)
+            currency = sec.get('faceunit', sec.get('currency', 'RUB'))
+            
+            # Нормализуем валюту: SUR и RUB считаем рублями
+            is_ruble = currency in ['RUB', 'SUR']
+            display_currency = 'RUB' if is_ruble else currency
+            
+            price = mkt['price']
+            
+            # Рассчитываем цену в рублях только для рублевых облигаций
+            price_rub = 0
+            if is_ruble and facevalue > 0:
+                # Для рублевых облигаций считаем цену в рублях
+                price_rub = round(price * facevalue / 100, 2)
+            elif not is_ruble:
+                # Для валютных облигаций не показываем цену в рублях
+                logger.debug(f"Non-RUB bond {ticker} ({currency}), skipping RUB price")
+            
+            bond_data = {
                 'ticker': ticker,
                 'name': sec['short_name'],
                 'full_name': sec['sec_name'],
-                'price': mkt['price'],
-                'price_rub': mkt['price_rub'],  # Цена в рублях
-                'nominal': self.NOMINAL,  # Номинал 1000₽
+                'price': price,  # цена в процентах от номинала
+                'price_rub': price_rub,  # цена в рублях (только для RUB облигаций)
+                'facevalue': facevalue,
+                'currency': display_currency,
+                'original_currency': currency,  # сохраняем оригинал на всякий случай
                 'change_percent': mkt['change_percent'],
                 'open_price': mkt['open'],
                 'high': mkt['high'],
@@ -205,12 +210,14 @@ class BondsDataProvider(IMarketDataProvider):
                 'coupon_period': sec['coupon_period'],
                 'next_coupon': sec['next_coupon'],
                 'issue_size': sec['issue_size'],
-                'currency': sec['currency'],
                 'prev_price': sec['prev_price'],
                 'last_updated': datetime.now().isoformat(),
                 'asset_type': 'bond',
-                'board': mkt.get('board', ''),  # Информация о торговой доске
-            })
+                'board': mkt.get('board', ''),
+                'is_ruble': is_ruble,  # флаг для фронтенда
+            }
+            
+            result.append(bond_data)
         
         logger.info(f"Fetched {len(result)} bonds from all boards")
         return result
