@@ -19,8 +19,6 @@ __all__ = [
     "verify_user_password",
     "verify_password",
     "get_password_hash",
-    "validate_full_name",
-    "normalize_and_validated_email",
     "create_access_token",
     "verify_token",
     "EmailAlreadyExistsError",

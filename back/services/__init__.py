@@ -3,7 +3,8 @@ from .market_service import MarketService
 from .auth_service import AuthService
 from .main_service import MainService
 from .security_service import SecurityService
-from .portfolio_service import PortfolioService 
+from .portfolio_service import PortfolioService
+from .profile_service import ProfileService
 
 __all__ = [
     "RenderService",
@@ -11,5 +12,6 @@ __all__ = [
     "AuthService",
     "MainService",
     "SecurityService",
-    "PortfolioService"
+    "PortfolioService",
+    "ProfileService"
 ]

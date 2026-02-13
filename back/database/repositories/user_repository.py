@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
 from ..models.user import User as ORMUser
 from ...contracts.repositories import IUserRepository
@@ -48,11 +48,9 @@ class UserRepository(IUserRepository):
             self.db.add(orm_user)
             await self.db.commit()
             await self.db.refresh(orm_user)
-            logger.info(f"User created successfully: {email}")
             return self._to_domain(orm_user)
         except IntegrityError:
             await self.db.rollback()
-            logger.warning(f"Email already exists: {email}")
             raise ValueError(f"Email already registered: {email}")
         except Exception as e:
             await self.db.rollback()
@@ -66,3 +64,55 @@ class UserRepository(IUserRepository):
         if verify_password(password, user.hashed_password):
             return user
         return None
+
+    async def update_user(
+        self,
+        user_id: int,
+        email: Optional[str] = None,
+        full_name: Optional[str] = None,
+        hashed_password: Optional[str] = None
+    ) -> Optional[DomainUser]:
+        try:
+            update_data = {}
+            if email is not None:
+                update_data["email"] = email
+            if full_name is not None:
+                update_data["full_name"] = full_name.strip()
+            if hashed_password is not None:
+                update_data["hashed_password"] = hashed_password
+
+            if not update_data:
+                return await self.get_by_id(user_id)
+
+            stmt = (
+                update(ORMUser)
+                .where(ORMUser.id == user_id)
+                .values(**update_data)
+                .returning(ORMUser)
+            )
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            updated_user = result.scalar_one_or_none()
+            
+            if updated_user:
+                return self._to_domain(updated_user)
+            return None
+
+        except IntegrityError as e:
+            await self.db.rollback()
+            raise ValueError("Email already exists")
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error updating user {user_id}: {e}")
+            return None
+
+    async def delete_user(self, user_id: int) -> bool:
+        try:
+            stmt = delete(ORMUser).where(ORMUser.id == user_id)
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error deleting user {user_id}: {e}")
+            return False
