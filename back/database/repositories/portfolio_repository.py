@@ -1,7 +1,6 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from sqlalchemy.orm import selectinload
 from ..models.portfolio import PortfolioItem as ORMPortfolioItem
 from ...core.logger import logger
 
@@ -41,10 +40,15 @@ class PortfolioRepository:
             existing = result.scalar_one_or_none()
             
             if existing:
+                old_quantity = existing.quantity
+                old_avg_price = existing.average_price
+                
                 existing.quantity += quantity
+                
                 if average_price > 0:
-                    total_investment = (existing.quantity * existing.average_price) + (quantity * average_price)
-                    existing.average_price = total_investment / existing.quantity
+                    total_value = (old_quantity * old_avg_price) + (quantity * average_price)
+                    existing.average_price = total_value / existing.quantity
+                
                 if notes:
                     existing.notes = notes
             else:
