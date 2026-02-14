@@ -1,3 +1,4 @@
+// ./front/static/js/portfolio.js
 document.addEventListener('DOMContentLoaded', function() {
     const addAssetBtn = document.getElementById('addAssetBtn');
     const addFirstAssetBtn = document.getElementById('addFirstAssetBtn');
@@ -10,20 +11,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const editButtons = document.querySelectorAll('.edit-btn');
     const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
 
-    
     function openModal() {
         addAssetModal.classList.add('show');
         document.body.style.overflow = 'hidden';
     }
 
-    
     function closeModal() {
         addAssetModal.classList.remove('show');
         document.body.style.overflow = '';
         addAssetForm.reset();
     }
 
-    
     if (addAssetBtn) {
         addAssetBtn.addEventListener('click', openModal);
     }
@@ -32,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addFirstAssetBtn.addEventListener('click', openModal);
     }
 
-    
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', closeModal);
     }
@@ -41,14 +38,12 @@ document.addEventListener('DOMContentLoaded', function() {
         cancelAddBtn.addEventListener('click', closeModal);
     }
 
-    
     addAssetModal.addEventListener('click', function(e) {
         if (e.target === addAssetModal) {
             closeModal();
         }
     });
 
-    
     if (addAssetForm) {
         addAssetForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -79,14 +74,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    
     if (refreshPortfolioBtn) {
         refreshPortfolioBtn.addEventListener('click', function() {
             window.location.reload();
         });
     }
 
-    
     deleteButtons.forEach(button => {
         button.addEventListener('click', async function() {
             const itemId = this.getAttribute('data-item-id');
@@ -120,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    
     editButtons.forEach(button => {
         button.addEventListener('click', function() {
             const itemId = this.getAttribute('data-item-id');
@@ -130,14 +122,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const quantity = parseFloat(row.querySelector('.quantity-cell').textContent);
             const avgPrice = parseFloat(row.querySelector('.avg-price-cell').textContent.replace(' ₽', ''));
             
-            
             alert(`Редактирование актива ${ticker}\nТекущее количество: ${quantity}\nСредняя цена: ${avgPrice} ₽\n\nФункция редактирования в разработке.`);
         });
     });
 
-    
     function showNotification(message, type = 'info') {
-        
         const existingNotification = document.querySelector('.notification');
         if (existingNotification) {
             existingNotification.remove();
@@ -149,11 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.body.appendChild(notification);
         
-        
         setTimeout(() => {
             notification.classList.add('show');
         }, 10);
-        
         
         setTimeout(() => {
             notification.classList.remove('show');
@@ -163,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
-    
     const style = document.createElement('style');
     style.textContent = `
         .notification {

@@ -1,13 +1,18 @@
+# FILE: ./back/services/market/providers/bonds.py
 import aiohttp
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from back.contracts.market import IMarketDataProvider
 from back.core.logger import logger
+from .cbr_rates import CBRRateProvider
+
 
 class BondsDataProvider(IMarketDataProvider):
     def __init__(self, moex_base_url: str):
         self.moex_base_url = moex_base_url.rstrip('/')
         self.bond_boards = ['TQOB', 'TQCB', 'TQDB', 'TQRB', 'TQPB', 'TQNB']
+        self.cbr_provider = CBRRateProvider()
+        self.currency_rates = {}
 
     def get_cache_key(self) -> str:
         return "moex:bonds"
@@ -17,14 +22,12 @@ class BondsDataProvider(IMarketDataProvider):
 
     async def fetch_data(self) -> List[Dict[str, Any]]:
         try:
+            self.currency_rates = await self.cbr_provider.fetch_rates()
             securities_data = await self._fetch_securities_data()
             if not securities_data:
                 return []
-            
             market_data = await self._fetch_market_data_all_boards()
-            
             return self._merge_data(securities_data, market_data)
-            
         except Exception as e:
             logger.error(f"Error fetching bonds: {e}")
             return []
@@ -35,19 +38,16 @@ class BondsDataProvider(IMarketDataProvider):
             'iss.meta': 'off',
             'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,MATDATE,COUPONVALUE,COUPONPERIOD,NEXTCOUPON,CURRENCYID,PREVPRICE,PREVWAPRICE,LOTSIZE,ISSUESIZE,FACEVALUE,FACEUNIT'
         }
-        
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params) as response:
                     if response.status != 200:
                         logger.error(f"MOEX securities API error: {response.status}")
                         return {}
-                    
                     data = await response.json()
                     securities = data.get('securities', {})
                     columns = securities.get('columns', [])
                     rows = securities.get('data', [])
-                    
                     return self._parse_securities(columns, rows)
         except Exception as e:
             logger.error(f"Error fetching securities: {e}")
@@ -55,7 +55,6 @@ class BondsDataProvider(IMarketDataProvider):
 
     async def _fetch_market_data_all_boards(self) -> Dict[str, Dict[str, Any]]:
         all_market_data = {}
-        
         async with aiohttp.ClientSession() as session:
             for board in self.bond_boards:
                 try:
@@ -66,8 +65,6 @@ class BondsDataProvider(IMarketDataProvider):
                 except Exception as e:
                     logger.warning(f"Error fetching market data for board {board}: {e}")
                     continue
-        
-        logger.info(f"Fetched market data for {len(all_market_data)} bonds from all boards")
         return all_market_data
 
     async def _fetch_board_market_data(self, session: aiohttp.ClientSession, board: str) -> Dict[str, Dict[str, Any]]:
@@ -77,18 +74,14 @@ class BondsDataProvider(IMarketDataProvider):
             'iss.only': 'marketdata',
             'marketdata.columns': 'SECID,LAST,LASTTOPREVPRICE,CHANGE,YIELD,OPEN,HIGH,LOW,VALUE,UPDATETIME'
         }
-        
         try:
             async with session.get(url, params=params) as response:
                 if response.status != 200:
-                    logger.debug(f"MOEX {board} marketdata error: {response.status}")
                     return {}
-                
                 data = await response.json()
                 marketdata = data.get('marketdata', {})
                 columns = marketdata.get('columns', [])
                 rows = marketdata.get('data', [])
-                
                 return self._parse_market_data(columns, rows, board)
         except Exception as e:
             logger.debug(f"Error fetching {board} market data: {e}")
@@ -97,13 +90,10 @@ class BondsDataProvider(IMarketDataProvider):
     def _parse_securities(self, columns: List[str], rows: List[List]) -> Dict[str, Dict[str, Any]]:
         result = {}
         col_index = {col: idx for idx, col in enumerate(columns)}
-        
         for row in rows:
             if not row:
                 continue
-            
             ticker = row[col_index.get('SECID', 0)]
-            
             result[ticker] = {
                 'short_name': self._safe_str(row, col_index.get('SHORTNAME'), ticker),
                 'sec_name': self._safe_str(row, col_index.get('SECNAME'), ''),
@@ -113,34 +103,26 @@ class BondsDataProvider(IMarketDataProvider):
                 'coupon_period': self._safe_int(row, col_index.get('COUPONPERIOD'), 0),
                 'next_coupon': self._safe_str(row, col_index.get('NEXTCOUPON')),
                 'currency': self._safe_str(row, col_index.get('CURRENCYID'), 'RUB'),
-                'prev_price': self._safe_float(row, col_index.get('PREVWAPRICE')) or 
-                             self._safe_float(row, col_index.get('PREVPRICE')),
+                'prev_price': self._safe_float(row, col_index.get('PREVWAPRICE')) or self._safe_float(row, col_index.get('PREVPRICE')),
                 'lotsize': self._safe_int(row, col_index.get('LOTSIZE'), 1),
                 'issue_size': self._safe_float(row, col_index.get('ISSUESIZE'), 0.0),
                 'facevalue': self._safe_float(row, col_index.get('FACEVALUE'), 0.0),
                 'faceunit': self._safe_str(row, col_index.get('FACEUNIT'), 'RUB'),
             }
-        
-        logger.info(f"Parsed {len(result)} securities")
         return result
 
     def _parse_market_data(self, columns: List[str], rows: List[List], board: str = "") -> Dict[str, Dict[str, Any]]:
         result = {}
         col_index = {col: idx for idx, col in enumerate(columns)}
-        
         for row in rows:
             if not row or len(row) < 10:
                 continue
-            
             ticker = row[col_index.get('SECID', 0)]
-            
             last = self._safe_float(row, col_index.get('LAST'))
             if last == 0:
                 continue
-            
             change_rub = self._safe_float(row, col_index.get('LASTTOPREVPRICE'), 0.0)
             change_percent = self._safe_float(row, col_index.get('CHANGE'), 0.0)
-            
             result[ticker] = {
                 'price': last,
                 'change_percent': round(change_percent, 3),
@@ -152,50 +134,35 @@ class BondsDataProvider(IMarketDataProvider):
                 'update_time': self._safe_str(row, col_index.get('UPDATETIME')),
                 'board': board,
             }
-        
-        logger.debug(f"Parsed {len(result)} market data entries from board {board}")
         return result
 
     def _merge_data(self, securities: Dict[str, Dict[str, Any]], market: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
         result = []
-        
         for ticker, sec in securities.items():
             mkt = market.get(ticker)
-            
-            if not mkt:
+            if not mkt or mkt['price'] <= 0:
                 continue
-            
-            if mkt['price'] <= 0:
-                continue
-            
-            # Получаем данные облигации
             facevalue = sec.get('facevalue', 0)
             currency = sec.get('faceunit', sec.get('currency', 'RUB'))
-            
-            # Нормализуем валюту: SUR и RUB считаем рублями
             is_ruble = currency in ['RUB', 'SUR']
             display_currency = 'RUB' if is_ruble else currency
-            
             price = mkt['price']
-            
-            # Рассчитываем цену в рублях только для рублевых облигаций
             price_rub = 0
             if is_ruble and facevalue > 0:
-                # Для рублевых облигаций считаем цену в рублях
                 price_rub = round(price * facevalue / 100, 2)
-            elif not is_ruble:
-                # Для валютных облигаций не показываем цену в рублях
-                logger.debug(f"Non-RUB bond {ticker} ({currency}), skipping RUB price")
-            
+            elif not is_ruble and facevalue > 0:
+                cbr_rate = self.currency_rates.get(currency, 0)
+                if cbr_rate > 0:
+                    price_rub = round(price * cbr_rate * facevalue / 100, 2)
             bond_data = {
                 'ticker': ticker,
                 'name': sec['short_name'],
                 'full_name': sec['sec_name'],
-                'price': price,  # цена в процентах от номинала
-                'price_rub': price_rub,  # цена в рублях (только для RUB облигаций)
+                'price': price,
+                'price_rub': price_rub,
                 'facevalue': facevalue,
                 'currency': display_currency,
-                'original_currency': currency,  # сохраняем оригинал на всякий случай
+                'original_currency': currency,
                 'change_percent': mkt['change_percent'],
                 'open_price': mkt['open'],
                 'high': mkt['high'],
@@ -214,12 +181,9 @@ class BondsDataProvider(IMarketDataProvider):
                 'last_updated': datetime.now().isoformat(),
                 'asset_type': 'bond',
                 'board': mkt.get('board', ''),
-                'is_ruble': is_ruble,  # флаг для фронтенда
+                'is_ruble': is_ruble,
             }
-            
             result.append(bond_data)
-        
-        logger.info(f"Fetched {len(result)} bonds from all boards")
         return result
 
     @staticmethod

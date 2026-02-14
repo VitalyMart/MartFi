@@ -105,7 +105,14 @@
                         <td class="quantity-cell">{{ "{:,.2f}".format(item.quantity).replace(",", " ") }}</td>
                         <td class="avg-price-cell">{{ "{:,.2f}".format(item.average_price).replace(",", " ") }} ₽</td>
                         <td class="current-price-cell">{{ "{:,.2f}".format(item.current_price).replace(",", " ") }} ₽</td>
-                        <td class="current-value-cell">{{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽</td>
+                        <td class="current-value-cell">
+    {% if item.asset_type == 'bond' and item.currency and item.currency != 'RUB' %}
+        {{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽
+        <small class="currency-note">{{ item.currency }}</small>
+    {% else %}
+        {{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽
+    {% endif %}
+</td>
                         <td class="change-cell">
                             <div class="change-wrapper {% if item.total_change >= 0 %}positive{% else %}negative{% endif %}">
                                 <span class="change-amount">
