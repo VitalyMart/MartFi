@@ -15,3 +15,6 @@ qdrant_storage/
 
 # IDE
 .vscode/
+
+# RAG data
+rag_knowledge_data/
