@@ -1,0 +1,16 @@
+<div class="chat-widget-container">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script src="{{ url_for('static', path='/js/chat-widget.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/chat-widget.css') }}">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            new ChatWidget({
+                apiUrl: '/api/chat',
+                csrfToken: document.querySelector('meta[name="csrf-token"]')?.content,
+                position: 'bottom-right',
+                theme: 'light',
+                useRag: true
+            });
+        });
+    </script>
+</div>

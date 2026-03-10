@@ -2,6 +2,7 @@
 {% block title %}Рынок{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/market.css">
+<link rel="stylesheet" href="/static/css/chat-widget.css">
 {% endblock %}
 {% block content %}
 <div class="market-container">
@@ -687,6 +688,8 @@
         </div>
     </div>
 </div>
+
+<!-- Модальное окно добавления в портфель -->
 <div class="modal-overlay" id="addToPortfolioModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -731,8 +734,27 @@
         </div>
     </div>
 </div>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
 {% endblock %}
+
 {% block extra_js %}
+<script src="/static/js/markdown-parser.js"></script>
 <script src="/static/js/market.js"></script>
 <script src="/static/js/market-portfolio.js"></script>
+<script src="/static/js/chat-widget.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof ChatWidget !== 'undefined') {
+        new ChatWidget({
+            apiUrl: '/api/chat',
+            csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || '',
+            toggleButtonId: 'chatToggleBtn',
+            popupId: 'chatPopup',
+            minimizeButtonId: 'minimizeChatBtn',
+            closeButtonId: 'closeChatBtn'
+        });
+    }
+});
+</script>
 {% endblock %}

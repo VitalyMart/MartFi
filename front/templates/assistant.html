@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}Ассистент - MartFi{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/assistant.css">
+{% endblock %}
+{% block content %}
+<div class="assistant-container">
+    <div class="assistant-header">
+        <h1>Финансовый ассистент</h1>
+        <p class="assistant-description">
+            Задайте любой вопрос об инвестициях, акциях, облигациях или фондах.
+        </p>
+    </div>
+    <div class="chat-main-window">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <div class="rag-toggle">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="useRagToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Использовать базу знаний</span>
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <textarea class="chat-input" id="messageInput" placeholder="Введите ваш вопрос..." rows="1"></textarea>
+                <button class="chat-send-btn" id="sendButton" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="chat-footer">
+                <button class="clear-history-btn" id="clearHistory">Очистить историю</button>
+                <span class="model-info">Модель: Qwen 3.5</span>
+            </div>
+        </div>
+    </div>
+    <div class="knowledge-base-info">
+        <h3>База знаний</h3>
+        <div class="documents-list" id="documentsList">
+            <div class="loading">Загрузка документов...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="/static/js/markdown-parser.js"></script>
+<script src="/static/js/assistant.js"></script>
+{% endblock %}

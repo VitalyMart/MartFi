@@ -1,3 +1,4 @@
+# back/main.py
 import os
 from contextlib import asynccontextmanager
 
@@ -13,6 +14,8 @@ from .routes.main import router as main_router
 from .routes.market import router as market_router
 from .routes.portfolio import router as portfolio_router
 from .routes.profile import router as profile_router
+from .routes.chat import router as chat_router
+from .routes.assistant import router as assistant_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,3 +44,5 @@ app.include_router(main_router)
 app.include_router(market_router)
 app.include_router(portfolio_router)
 app.include_router(profile_router)
+app.include_router(chat_router)
+app.include_router(assistant_router)

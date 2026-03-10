@@ -11,6 +11,7 @@ from .render_dependencies import get_render_service
 from .portfolio_dependencies import get_portfolio_service, get_portfolio_repository
 from .profile_dependencies import get_profile_service
 from .common import get_security_service
+from .chat_dependencies import get_chat_service, get_openrouter_service, get_rag_service
 
 __all__ = [
     "get_auth_context_service",
@@ -26,4 +27,7 @@ __all__ = [
     "get_portfolio_service",
     "get_portfolio_repository",
     "get_profile_service",
+    "get_chat_service",
+    "get_openrouter_service",
+    "get_rag_service",
 ]

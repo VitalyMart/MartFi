@@ -21,7 +21,7 @@ class StocksDataProvider(IMarketDataProvider):
             async with aiohttp.ClientSession() as session:
                 securities_params = {
                     'iss.meta': 'off',
-                    'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE',
+                    'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE,PREVPRICE',
                 }
                 async with session.get(url, params=securities_params) as response:
                     if response.status != 200:
@@ -32,7 +32,7 @@ class StocksDataProvider(IMarketDataProvider):
 
                 marketdata_params = {
                     'iss.meta': 'off',
-                    'marketdata.columns': 'SECID,LAST,LASTTOPREVPRICE,OPEN,CHANGE,VALUE,UPDATETIME',
+                    'marketdata.columns': 'SECID,LAST,CHANGE,UPDATETIME',
                 }
                 marketdata_url = url + "?iss.only=marketdata"
                 async with session.get(marketdata_url, params=marketdata_params) as response:
@@ -42,64 +42,75 @@ class StocksDataProvider(IMarketDataProvider):
                     marketdata = await response.json()
                     market_data = marketdata.get('marketdata', {}).get('data', [])
 
-                market_dict = {}
-                for item in market_data:
-                    if item and len(item) >= 7:
-                        ticker = item[0]
-                        price = float(item[1]) if item[1] is not None else 0
-                        change_rub = float(item[2]) if item[2] is not None else 0
-                        change_percent_api = float(item[4]) if item[4] is not None else 0
-                        
-                        # ПЕРЕСЧИТЫВАЕМ ПРОЦЕНТ ИЗМЕНЕНИЯ ДЛЯ ВСЕХ АКЦИЙ
-                        calculated_change_percent = 0
-                        if price > 0 and change_rub != 0:
-                            prev_price = price - change_rub
-                            if prev_price > 0:
-                                calculated_change_percent = (change_rub / prev_price) * 100
-                        
-                        market_dict[ticker] = {
-                            'price': price,
-                            'change': change_rub,
-                            'open': float(item[3]) if item[3] is not None else 0,
-                            'change_percent': calculated_change_percent,  # ИСПОЛЬЗУЕМ ПЕРЕСЧИТАННОЕ ЗНАЧЕНИЕ
-                            'volume': float(item[5]) if item[5] is not None else 0,
-                            'update_time': item[6] if len(item) > 6 else None,
+                security_dict = {}
+                for security in securities:
+                    if security and len(security) >= 7:
+                        ticker = security[0]
+                        security_dict[ticker] = {
+                            'name': security[1],
+                            'full_name': security[2],
+                            'isin': security[3] if len(security) > 3 else None,
+                            'regnumber': security[4] if len(security) > 4 else None,
+                            'lotsize': int(security[5]) if len(security) > 5 and security[5] else 1,
+                            'prev_price': float(security[6]) if len(security) > 6 and security[6] is not None else 0,
                         }
 
+                market_dict = {}
+                for item in market_data:
+                    if item and len(item) >= 4:
+                        ticker = item[0]
+                        last_price = float(item[1]) if item[1] is not None else 0
+                        
+                        if ticker in security_dict:
+                            prev_price = security_dict[ticker]['prev_price']
+                            if prev_price != 0:
+                                change_rub = last_price - prev_price
+                                change_percent = (change_rub / prev_price) * 100
+                            else:
+                                change_rub = 0
+                                change_percent = 0
+                            
+                            market_dict[ticker] = {
+                                'price': last_price,
+                                'change': change_rub,
+                                'open_price': prev_price,
+                                'change_percent': change_percent,
+                                'volume': 0,
+                                'update_time': item[3] if len(item) > 3 else None,
+                            }
+
                 result = []
-                for security in securities[:500]:
-                    if not security or len(security) < 6:
-                        continue
-                    ticker = security[0]
-                    name = security[1]
-                    full_name = security[2]
-                    isin = security[3] if len(security) > 3 else None
-                    regnumber = security[4] if len(security) > 4 else None
-                    lotsize = int(security[5]) if len(security) > 5 and security[5] else 1
-                    
+                for ticker, sec_info in security_dict.items():
                     market_info = market_dict.get(
                         ticker,
-                        {'price': 0, 'change': 0, 'open': 0, 'change_percent': 0, 'volume': 0, 'update_time': None},
+                        {
+                            'price': 0,
+                            'change': 0,
+                            'open_price': sec_info['prev_price'],
+                            'change_percent': 0,
+                            'volume': 0,
+                            'update_time': None
+                        },
                     )
                     
                     result.append({
                         'ticker': ticker,
-                        'name': name,
-                        'full_name': full_name,
+                        'name': sec_info['name'],
+                        'full_name': sec_info['full_name'],
                         'price': market_info['price'],
-                        'change': market_info['change'],
-                        'open_price': market_info['open'],
-                        'change_percent': market_info['change_percent'],  # ТЕПЕРЬ ЗДЕСЬ ПРАВИЛЬНЫЕ ПРОЦЕНТЫ
+                        'change': round(market_info['change'], 4),
+                        'open_price': market_info['open_price'],
+                        'change_percent': round(market_info['change_percent'], 2),
                         'volume': market_info['volume'],
                         'update_time': market_info['update_time'],
-                        'isin': isin,
-                        'regnumber': regnumber,
-                        'lotsize': lotsize,
+                        'isin': sec_info['isin'],
+                        'regnumber': sec_info['regnumber'],
+                        'lotsize': sec_info['lotsize'],
                         'last_updated': datetime.now().isoformat(),
                     })
-                    
-                logger.info(f"Fetched {len(result)} stocks from MOEX with recalculated percentages")
-                return result
+                
+                logger.info(f"Fetched {len(result)} stocks from MOEX")
+                return result[:500]
 
         except aiohttp.ClientError as e:
             logger.error(f"Network error fetching MOEX data: {e}")
@@ -107,19 +118,20 @@ class StocksDataProvider(IMarketDataProvider):
         except Exception as e:
             logger.error(f"Error fetching stocks: {e}")
             return []
-
+    
     def _parse_securities_only(self, securities: List) -> List[Dict[str, Any]]:
         result = []
         for security in securities[:200]:
             if not security or len(security) < 3:
                 continue
+            prev_price = float(security[6]) if len(security) > 6 and security[6] is not None else 0
             result.append({
                 'ticker': security[0],
                 'name': security[1],
                 'full_name': security[2],
                 'price': 0,
                 'change': 0,
-                'open_price': 0,
+                'open_price': prev_price,
                 'change_percent': 0,
                 'volume': 0,
                 'update_time': None,
