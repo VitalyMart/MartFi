@@ -1,3 +1,4 @@
+# back/services/profile_service.py
 from typing import Optional, Dict, Any, List
 from ..database.repositories.user_repository import UserRepository
 from ..database.repositories.portfolio_repository import PortfolioRepository
@@ -26,11 +27,11 @@ class ProfileService:
             return None
 
         csrf_token = await self.security_service.get_csrf_token(request)
-        
+
         raw_portfolio_items = await self.portfolio_repo.get_user_portfolio(current_user.id)
-        
+
         enriched_items = await self._enrich_portfolio_items(raw_portfolio_items)
-        
+
         stats = await self._calculate_profile_stats(enriched_items, current_user)
 
         return ProfilePageData(
@@ -42,10 +43,9 @@ class ProfileService:
     async def _enrich_portfolio_items(self, portfolio_items: list) -> list:
         if not portfolio_items:
             return []
-        
-        asset_types = set(item['asset_type'] for item in portfolio_items)
+
         all_market_data = await self.market_service.get_all_cached_data()
-        
+
         enriched_items = []
         for item in portfolio_items:
             try:
@@ -54,23 +54,23 @@ class ProfileService:
                     (asset for asset in market_data if asset['ticker'] == item['ticker']),
                     None
                 )
-                
+
                 if current_data:
                     if item['asset_type'] == 'bond':
                         current_price = current_data.get('price_rub', 0)
                     else:
                         current_price = current_data.get('price', 0)
-                    
+
                     purchase_value = item['quantity'] * item['average_price']
                     current_value = item['quantity'] * current_price
-                    
+
                     enriched_item = {
                         **item,
                         'current_price': current_price,
                         'purchase_value': purchase_value,
                         'current_value': current_value
                     }
-                    
+
                     enriched_items.append(enriched_item)
                 else:
                     purchase_value = item['quantity'] * item['average_price']
@@ -81,7 +81,7 @@ class ProfileService:
                         'current_value': purchase_value
                     }
                     enriched_items.append(enriched_item)
-                    
+
             except Exception as e:
                 logger.error(f"Error enriching portfolio item {item['ticker']}: {e}")
                 purchase_value = item['quantity'] * item['average_price']
@@ -91,17 +91,17 @@ class ProfileService:
                     'purchase_value': purchase_value,
                     'current_value': purchase_value
                 })
-        
+
         return enriched_items
 
     async def _calculate_profile_stats(self, enriched_items: list, user: DomainUser) -> Dict[str, Any]:
         total_value = 0
         total_purchase = 0
-        
+
         for item in enriched_items:
             total_value += item.get('current_value', 0)
             total_purchase += item.get('purchase_value', 0)
-        
+
         total_change = total_value - total_purchase
         total_change_percent = (total_change / total_purchase * 100) if total_purchase > 0 else 0
 
@@ -162,7 +162,7 @@ class ProfileService:
         if not user:
             return {"success": False, "message": "Пользователь не найден"}
 
-        if not verify_password(current_password, user.hashed_password):
+        if not await verify_password(current_password, user.hashed_password):
             return {"success": False, "message": "Неверный текущий пароль"}
 
         if len(new_password) < 8:
@@ -184,7 +184,7 @@ class ProfileService:
         if not user:
             return {"success": False, "message": "Пользователь не найден"}
 
-        if not verify_password(password, user.hashed_password):
+        if not await verify_password(password, user.hashed_password):
             return {"success": False, "message": "Неверный пароль"}
 
         success = await self.user_repo.delete_user(user_id)

@@ -1,13 +1,15 @@
+# back/services/rag_service.py
 import os
 import json
 import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
+import aiofiles
+import asyncio
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_qdrant import QdrantVectorStore
 from langchain_core.documents import Document
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from ..core.logger import logger
 from ..core.redis_client import redis_client
 from ..config_qdrant import qdrant_settings
@@ -18,14 +20,13 @@ load_dotenv()
 class RAGService:
     _instance = None
     _embeddings = None
-    _client = None
-    _vector_store = None
-    
+    _async_client = None
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self):
         if not hasattr(self, 'initialized'):
             logger.info("Initializing RAG service (singleton)")
@@ -38,18 +39,15 @@ class RAGService:
             self.documents = {}
             self.cache_ttl = 3600
             self.top_k = 5
-            self._load_documents()
             self.initialized = True
             logger.info("RAG service initialized successfully")
-    
+
     def _init_embeddings(self):
         if RAGService._embeddings is None:
             logger.info(f"Loading embedding model: {qdrant_settings.EMBEDDING_MODEL}")
-            
             model_kwargs = {"device": "cpu"}
             if self.hf_token:
                 model_kwargs["token"] = self.hf_token
-                
             RAGService._embeddings = HuggingFaceEmbeddings(
                 model_name=qdrant_settings.EMBEDDING_MODEL,
                 model_kwargs=model_kwargs,
@@ -57,34 +55,25 @@ class RAGService:
             )
             logger.info("Embedding model loaded")
         self.embeddings = RAGService._embeddings
-    
+
     def _init_qdrant(self):
-        if RAGService._client is None:
-            logger.info(f"Connecting to Qdrant: {qdrant_settings.QDRANT_HOST}:{qdrant_settings.QDRANT_PORT}")
-            RAGService._client = QdrantClient(
+        if RAGService._async_client is None:
+            logger.info(f"Connecting to Qdrant (async): {qdrant_settings.QDRANT_HOST}:{qdrant_settings.QDRANT_PORT}")
+            RAGService._async_client = AsyncQdrantClient(
                 host=qdrant_settings.QDRANT_HOST,
                 port=qdrant_settings.QDRANT_PORT,
             )
-            logger.info("Qdrant client created")
-        self.client = RAGService._client
-        
-        if RAGService._vector_store is None:
-            RAGService._vector_store = QdrantVectorStore(
-                client=self.client,
-                collection_name=qdrant_settings.COLLECTION_NAME,
-                embedding=self.embeddings,
-            )
-            logger.info("Vector store created")
-        self.vector_store = RAGService._vector_store
+            logger.info("Async Qdrant client created")
+        self.async_client = RAGService._async_client
 
-    def _load_documents(self):
+    async def _load_documents_async(self):
         if not self.knowledge_base_path.exists():
             logger.warning(f"Knowledge base path not found: {self.knowledge_base_path}")
             return
         for file_path in self.knowledge_base_path.glob("*.txt"):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                    content = await f.read()
                 doc_name = file_path.stem
                 self.documents[doc_name] = {
                     'name': doc_name,
@@ -98,8 +87,27 @@ class RAGService:
     async def search_relevant_chunks(self, query: str, top_k: int = None) -> List[Document]:
         try:
             k = top_k or self.top_k
-            results = self.vector_store.similarity_search_with_score(query, k=k)
-            documents = [doc for doc, score in results]
+            loop = asyncio.get_event_loop()
+            query_vector = await loop.run_in_executor(None, self.embeddings.embed_query, query)
+            results = await self.async_client.query_points(
+                collection_name=qdrant_settings.COLLECTION_NAME,
+                query=query_vector,
+                limit=k,
+                with_payload=True,
+                with_vectors=False
+            )
+            documents = []
+            for point in results.points:
+                doc = Document(
+                    page_content=point.payload.get("content", ""),
+                    metadata={
+                        "source": point.payload.get("source", ""),
+                        "summary": point.payload.get("summary", ""),
+                        "keywords": point.payload.get("keywords", ""),
+                        "questions": point.payload.get("questions", ""),
+                    }
+                )
+                documents.append(doc)
             logger.info(f"Found {len(documents)} relevant chunks for query")
             return documents
         except Exception as e:
@@ -168,7 +176,7 @@ class RAGService:
 
     async def refresh_knowledge_base(self):
         self.documents = {}
-        self._load_documents()
+        await self._load_documents_async()
         return {
             "success": True,
             "documents_loaded": len(self.documents)

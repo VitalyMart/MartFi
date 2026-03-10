@@ -1,3 +1,4 @@
+# back/database/repositories/user_repository.py
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -61,7 +62,7 @@ class UserRepository(IUserRepository):
         user = await self.get_by_email(email)
         if not user:
             return None
-        if verify_password(password, user.hashed_password):
+        if await verify_password(password, user.hashed_password):
             return user
         return None
 
@@ -93,11 +94,9 @@ class UserRepository(IUserRepository):
             result = await self.db.execute(stmt)
             await self.db.commit()
             updated_user = result.scalar_one_or_none()
-            
             if updated_user:
                 return self._to_domain(updated_user)
             return None
-
         except IntegrityError as e:
             await self.db.rollback()
             raise ValueError("Email already exists")
