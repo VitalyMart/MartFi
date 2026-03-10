@@ -4,19 +4,78 @@ import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_qdrant import QdrantVectorStore
+from langchain_core.documents import Document
+from qdrant_client import QdrantClient
 from ..core.logger import logger
 from ..core.redis_client import redis_client
+from ..config_qdrant import qdrant_settings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class RAGService:
+    _instance = None
+    _embeddings = None
+    _client = None
+    _vector_store = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
-        self.knowledge_base_path = Path(__file__).parent.parent.parent / "rag_knowledge_data"
-        self.documents = {}
-        self.chunks = []
-        self.chunk_size = 500
-        self.chunk_overlap = 50
-        self.cache_ttl = 3600
-        self._load_documents()
-        self._create_chunks()
+        if not hasattr(self, 'initialized'):
+            logger.info("Initializing RAG service (singleton)")
+            self.hf_token = os.getenv("TOKEN_HUGGINGFACE")
+            if not self.hf_token:
+                logger.warning("TOKEN_HUGGINGFACE not found in .env, using unauthenticated requests")
+            self._init_embeddings()
+            self._init_qdrant()
+            self.knowledge_base_path = Path(__file__).parent.parent.parent / "rag_knowledge_data"
+            self.documents = {}
+            self.cache_ttl = 3600
+            self.top_k = 5
+            self._load_documents()
+            self.initialized = True
+            logger.info("RAG service initialized successfully")
+    
+    def _init_embeddings(self):
+        if RAGService._embeddings is None:
+            logger.info(f"Loading embedding model: {qdrant_settings.EMBEDDING_MODEL}")
+            
+            model_kwargs = {"device": "cpu"}
+            if self.hf_token:
+                model_kwargs["token"] = self.hf_token
+                
+            RAGService._embeddings = HuggingFaceEmbeddings(
+                model_name=qdrant_settings.EMBEDDING_MODEL,
+                model_kwargs=model_kwargs,
+                encode_kwargs={"normalize_embeddings": True},
+            )
+            logger.info("Embedding model loaded")
+        self.embeddings = RAGService._embeddings
+    
+    def _init_qdrant(self):
+        if RAGService._client is None:
+            logger.info(f"Connecting to Qdrant: {qdrant_settings.QDRANT_HOST}:{qdrant_settings.QDRANT_PORT}")
+            RAGService._client = QdrantClient(
+                host=qdrant_settings.QDRANT_HOST,
+                port=qdrant_settings.QDRANT_PORT,
+            )
+            logger.info("Qdrant client created")
+        self.client = RAGService._client
+        
+        if RAGService._vector_store is None:
+            RAGService._vector_store = QdrantVectorStore(
+                client=self.client,
+                collection_name=qdrant_settings.COLLECTION_NAME,
+                embedding=self.embeddings,
+            )
+            logger.info("Vector store created")
+        self.vector_store = RAGService._vector_store
 
     def _load_documents(self):
         if not self.knowledge_base_path.exists():
@@ -36,48 +95,25 @@ class RAGService:
             except Exception as e:
                 logger.error(f"Error loading document {file_path}: {e}")
 
-    def _create_chunks(self):
-        self.chunks = []
-        for doc_name, doc in self.documents.items():
-            content = doc['content']
-            words = content.split()
-            for i in range(0, len(words), self.chunk_size - self.chunk_overlap):
-                chunk_words = words[i:i + self.chunk_size]
-                if chunk_words:
-                    chunk_text = ' '.join(chunk_words)
-                    chunk_id = hashlib.md5(f"{doc_name}_{i}".encode()).hexdigest()
-                    self.chunks.append({
-                        'id': chunk_id,
-                        'doc_name': doc_name,
-                        'text': chunk_text,
-                        'start_idx': i,
-                        'end_idx': i + len(chunk_words)
-                    })
-
-    def search_relevant_chunks(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        if not self.chunks:
+    async def search_relevant_chunks(self, query: str, top_k: int = None) -> List[Document]:
+        try:
+            k = top_k or self.top_k
+            results = self.vector_store.similarity_search_with_score(query, k=k)
+            documents = [doc for doc, score in results]
+            logger.info(f"Found {len(documents)} relevant chunks for query")
+            return documents
+        except Exception as e:
+            logger.error(f"Error searching chunks: {e}")
             return []
-        query_words = set(query.lower().split())
-        scored_chunks = []
-        for chunk in self.chunks:
-            chunk_text_lower = chunk['text'].lower()
-            score = 0
-            for word in query_words:
-                if len(word) > 3:
-                    score += chunk_text_lower.count(word)
-            if score > 0:
-                scored_chunks.append({'chunk': chunk, 'score': score, 'doc_name': chunk['doc_name']})
-        scored_chunks.sort(key=lambda x: x['score'], reverse=True)
-        return [item['chunk'] for item in scored_chunks[:top_k]]
 
-    def build_context(self, chunks: List[Dict[str, Any]]) -> str:
-        if not chunks:
+    def build_context(self, documents: List[Document]) -> str:
+        if not documents:
             return ""
         context_parts = []
-        for i, chunk in enumerate(chunks, 1):
-            doc_name = chunk['doc_name']
-            doc_display_name = self._get_doc_display_name(doc_name)
-            context_parts.append(f"[Документ {i}: {doc_display_name}]\n{chunk['text']}\n")
+        for i, doc in enumerate(documents, 1):
+            source = doc.metadata.get('source', 'Unknown')
+            doc_display_name = self._get_doc_display_name(source)
+            context_parts.append(f"[Документ {i}: {doc_display_name}]\n{doc.page_content}\n")
         return "\n---\n".join(context_parts)
 
     def _get_doc_display_name(self, doc_name: str) -> str:
@@ -86,7 +122,8 @@ class RAGService:
             'companies': 'Информация о компаниях',
             'funds_guide': 'Руководство по фондам',
             'index': 'Индексы',
-            'stocks_guide': 'Руководство по акциям'
+            'stocks_guide': 'Руководство по акциям',
+            'about_MartFi': 'О MartFi'
         }
         return display_names.get(doc_name, doc_name)
 
@@ -99,44 +136,16 @@ class RAGService:
         except Exception as e:
             logger.error(f"Redis cache error: {e}")
 
-        relevant_chunks = self.search_relevant_chunks(query)
-        context = self.build_context(relevant_chunks)
-
-        system_prompt = """Ты - финансовый ассистент MartFi, помогающий пользователям с инвестициями и финансовыми вопросами.
-Ты отвечаешь на русском языке, используя предоставленный контекст из базы знаний.
-Если в контексте нет информации для ответа, ты говоришь, что не нашел информации, но можешь дать общий совет на основе своих знаний.
-Будь дружелюбным, полезным и точным.
-
-ВАЖНОЕ ПРАВИЛО ДЛЯ ТАБЛИЦ:
-- Если пишешь таблицу - используй HTML теги <table>, <tr>, <th>, <td> напрямую
-- НЕ оборачивай HTML в блоки кода (```html или ```)
-- НЕ используй markdown-таблицы (символы | и ---)
-- HTML должен быть чистым, без обёрток, чтобы сразу отображался в интерфейсе
-
-Пример правильного вывода таблицы:
-<table>
-<tr><th>Заголовок 1</th><th>Заголовок 2</th></tr>
-<tr><td>Данные 1</td><td>Данные 2</td></tr>
-</table>
-"""
-        user_prompt = f"""Контекст из базы знаний:
-{context if context else "Контекст не найден."}
-
-Вопрос пользователя: {query}
-
-Ответь на вопрос используя информацию из контекста."""
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+        relevant_docs = await self.search_relevant_chunks(query)
+        context = self.build_context(relevant_docs)
+        documents_used = list(set([doc.metadata.get('source', 'Unknown') for doc in relevant_docs]))
 
         result = {
             "query": query,
             "context_used": bool(context),
-            "chunks_count": len(relevant_chunks),
-            "documents_used": list(set(chunk['doc_name'] for chunk in relevant_chunks)),
-            "messages": messages
+            "chunks_count": len(relevant_docs),
+            "documents_used": documents_used,
+            "context": context
         }
 
         try:
@@ -152,18 +161,15 @@ class RAGService:
                 "name": doc['name'],
                 "display_name": self._get_doc_display_name(doc['name']),
                 "size": len(doc['content']),
-                "chunks": sum(1 for chunk in self.chunks if chunk['doc_name'] == doc['name'])
+                "chunks": 0
             }
             for doc in self.documents.values()
         ]
 
     async def refresh_knowledge_base(self):
         self.documents = {}
-        self.chunks = []
         self._load_documents()
-        self._create_chunks()
         return {
             "success": True,
-            "documents_loaded": len(self.documents),
-            "chunks_created": len(self.chunks)
+            "documents_loaded": len(self.documents)
         }

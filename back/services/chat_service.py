@@ -115,7 +115,9 @@ class ChatService:
         if rag_context and rag_context.get("context_used"):
             documents = rag_context.get("documents_used", [])
             doc_names = [self.rag._get_doc_display_name(doc) for doc in documents]
-            system_prompt += f"\nДля ответа на этот вопрос я использовал информацию из документов: {', '.join(doc_names)}."
+            system_prompt += f"\n\nДля ответа на этот вопрос я использую информацию из документов: {', '.join(doc_names)}."
+            if rag_context.get("context"):
+                system_prompt += f"\n\nКонтекст:\n{rag_context['context']}"
         
         messages = [{"role": "system", "content": system_prompt}]
         for msg in history[-10:]:
