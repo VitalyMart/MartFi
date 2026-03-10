@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from ..database.repositories.user_repository import UserRepository
 from ..database.repositories.portfolio_repository import PortfolioRepository
 from ..services.market_service import MarketService
@@ -27,13 +27,10 @@ class ProfileService:
 
         csrf_token = await self.security_service.get_csrf_token(request)
         
-        # Получаем сырые данные портфеля
         raw_portfolio_items = await self.portfolio_repo.get_user_portfolio(current_user.id)
         
-        # Обогащаем данные текущими ценами
         enriched_items = await self._enrich_portfolio_items(raw_portfolio_items)
         
-        # Считаем статистику на основе обогащенных данных
         stats = await self._calculate_profile_stats(enriched_items, current_user)
 
         return ProfilePageData(
@@ -43,20 +40,22 @@ class ProfileService:
         )
 
     async def _enrich_portfolio_items(self, portfolio_items: list) -> list:
-        """Обогащает элементы портфеля текущими рыночными данными"""
-        enriched_items = []
+        if not portfolio_items:
+            return []
         
+        asset_types = set(item['asset_type'] for item in portfolio_items)
+        all_market_data = await self.market_service.get_all_cached_data()
+        
+        enriched_items = []
         for item in portfolio_items:
             try:
-                market_data = await self.market_service.get_cached_data(item['asset_type'])
-                
+                market_data = all_market_data.get(item['asset_type'], [])
                 current_data = next(
                     (asset for asset in market_data if asset['ticker'] == item['ticker']),
                     None
                 )
                 
                 if current_data:
-                    # Для облигаций используем цену в рублях, для остальных - обычную цену
                     if item['asset_type'] == 'bond':
                         current_price = current_data.get('price_rub', 0)
                     else:
@@ -74,7 +73,6 @@ class ProfileService:
                     
                     enriched_items.append(enriched_item)
                 else:
-                    # Если нет рыночных данных, используем цену покупки
                     purchase_value = item['quantity'] * item['average_price']
                     enriched_item = {
                         **item,
@@ -86,7 +84,6 @@ class ProfileService:
                     
             except Exception as e:
                 logger.error(f"Error enriching portfolio item {item['ticker']}: {e}")
-                # В случае ошибки используем цену покупки
                 purchase_value = item['quantity'] * item['average_price']
                 enriched_items.append({
                     **item,

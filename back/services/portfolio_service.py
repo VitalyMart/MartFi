@@ -36,22 +36,24 @@ class PortfolioService:
         )
     
     async def _enrich_portfolio_items(self, portfolio_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        enriched_items = []
+        if not portfolio_items:
+            return []
         
+        asset_types = set(item['asset_type'] for item in portfolio_items)
+        all_market_data = await self.market_service.get_all_cached_data()
+        
+        enriched_items = []
         for item in portfolio_items:
             try:
-                market_data = await self.market_service.get_cached_data(item['asset_type'])
-                
+                market_data = all_market_data.get(item['asset_type'], [])
                 current_data = next(
                     (asset for asset in market_data if asset['ticker'] == item['ticker']),
                     None
                 )
                 
                 if current_data:
-                    # Для облигаций используем цену в рублях, для остальных - обычную цену
                     if item['asset_type'] == 'bond':
-                        current_price = current_data.get('price_rub', 0)  # Цена в рублях
-                        # Для облигаций изменение в процентах уже рассчитано правильно
+                        current_price = current_data.get('price_rub', 0)
                         current_change_percent = current_data.get('change_percent', 0)
                     else:
                         current_price = current_data.get('price', 0)
@@ -77,7 +79,6 @@ class PortfolioService:
                         'asset_type_display': self._get_asset_type_display(item['asset_type'])
                     }
                     
-                    # Добавляем дополнительную информацию для облигаций
                     if item['asset_type'] == 'bond':
                         enriched_item['nominal'] = current_data.get('nominal', 1000)
                         enriched_item['yield'] = current_data.get('yield', 0)
@@ -149,10 +150,6 @@ class PortfolioService:
     
     async def quick_add_to_portfolio(self, user_id: int, ticker: str, asset_type: str, 
                                     quantity: float, price: float = None) -> Optional[Dict[str, Any]]:
-        """
-        Быстрое добавление актива в портфель.
-        Если цена не указана, используется текущая рыночная цена.
-        """
         if asset_type == 'index':
             return None
         
@@ -164,7 +161,6 @@ class PortfolioService:
                     None
                 )
                 if asset_data:
-                    # Для облигаций используем цену в рублях
                     if asset_type == 'bond':
                         price = asset_data.get('price_rub', 0)
                     else:
