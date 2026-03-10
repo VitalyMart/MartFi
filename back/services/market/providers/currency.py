@@ -1,13 +1,13 @@
 import aiohttp
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from back.contracts.market import IMarketDataProvider
 from back.core.logger import logger
 
-
 class CurrencyDataProvider(IMarketDataProvider):
-    def __init__(self, moex_base_url: str):
+    def __init__(self, moex_base_url: str, session: Optional[aiohttp.ClientSession] = None):
         self.base_url = moex_base_url.rstrip("/")
+        self._session = session
 
     def get_cache_key(self) -> str:
         return "moex:currency"
@@ -19,10 +19,15 @@ class CurrencyDataProvider(IMarketDataProvider):
         try:
             url = f"{self.base_url}/engines/currency/markets/selt/securities.json"
             
-            async with aiohttp.ClientSession() as session:
-                securities_data = await self._fetch_securities(session, url)
-                market_data = await self._fetch_market_data(session, url)
+            if self._session:
+                securities_data = await self._fetch_securities(self._session, url)
+                market_data = await self._fetch_market_data(self._session, url)
                 return self._parse_currency_data(securities_data, market_data)
+            else:
+                async with aiohttp.ClientSession() as session:
+                    securities_data = await self._fetch_securities(session, url)
+                    market_data = await self._fetch_market_data(session, url)
+                    return self._parse_currency_data(securities_data, market_data)
                 
         except aiohttp.ClientError as e:
             logger.error(f"Network error: {e}")

@@ -1,4 +1,3 @@
-# back/main.py
 import os
 from contextlib import asynccontextmanager
 
@@ -9,6 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from .config import settings
 from .database import create_tables
 from .core.logger import logger
+from .core.http_client import http_session_lifespan
 from .routes.auth import router as auth_router
 from .routes.main import router as main_router
 from .routes.market import router as market_router
@@ -19,9 +19,10 @@ from .routes.assistant import router as assistant_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_tables()
-    logger.info("Application started successfully")
-    yield
+    async with http_session_lifespan():
+        await create_tables()
+        logger.info("Application started successfully")
+        yield
     logger.info("Application shutting down")
 
 app = FastAPI(lifespan=lifespan)

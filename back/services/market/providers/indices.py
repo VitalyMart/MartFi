@@ -1,13 +1,14 @@
 import aiohttp
 import json
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from back.contracts.market import IMarketDataProvider
 from back.core.logger import logger
 
 class IndicesDataProvider(IMarketDataProvider):
-    def __init__(self, moex_base_url: str):
+    def __init__(self, moex_base_url: str, session: Optional[aiohttp.ClientSession] = None):
         self.moex_base_url = moex_base_url.rstrip()
+        self._session = session
 
     def get_cache_key(self) -> str:
         return "moex:indices"
@@ -19,8 +20,8 @@ class IndicesDataProvider(IMarketDataProvider):
         try:
             url = f"{self.moex_base_url}/engines/stock/markets/index/boards/SNDX/securities.json"
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params={'iss.meta': 'off'}) as response:
+            if self._session:
+                async with self._session.get(url, params={'iss.meta': 'off'}) as response:
                     if response.status != 200:
                         logger.error(f"MOEX API error: {response.status}")
                         return []
@@ -56,6 +57,44 @@ class IndicesDataProvider(IMarketDataProvider):
                     
                     logger.info(f"Successfully parsed {len(result)} indices")
                     return result
+            else:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, params={'iss.meta': 'off'}) as response:
+                        if response.status != 200:
+                            logger.error(f"MOEX API error: {response.status}")
+                            return []
+                        
+                        text_data = await response.text()
+                        
+                        if not text_data or len(text_data) < 100:
+                            logger.error("API returned empty or very short response")
+                            return []
+                        
+                        try:
+                            data = json.loads(text_data)
+                        except json.JSONDecodeError as e:
+                            logger.error(f"JSON decode error: {e}")
+                            return []
+                        
+                        if 'securities' not in data:
+                            logger.error("No 'securities' section in response")
+                            return []
+                        
+                        securities_data = data.get('securities', {}).get('data', [])
+                        securities_columns = data.get('securities', {}).get('columns', [])
+                        
+                        marketdata_data = data.get('marketdata', {}).get('data', [])
+                        marketdata_columns = data.get('marketdata', {}).get('columns', [])
+                        
+                        if not securities_data:
+                            logger.warning("No securities data found in API response")
+                            return []
+                        
+                        result = self._parse_data(securities_data, securities_columns, 
+                                                marketdata_data, marketdata_columns)
+                        
+                        logger.info(f"Successfully parsed {len(result)} indices")
+                        return result
                     
         except aiohttp.ClientError as e:
             logger.error(f"Network error: {e}")
@@ -140,7 +179,6 @@ class IndicesDataProvider(IMarketDataProvider):
                                 except (ValueError, TypeError):
                                     continue
                     
-     
                     if price > 0 and change != 0:
                         prev_price = price - change
                         if prev_price > 0:

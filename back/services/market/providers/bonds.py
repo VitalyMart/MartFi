@@ -1,4 +1,3 @@
-# FILE: ./back/services/market/providers/bonds.py
 import aiohttp
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -6,13 +5,13 @@ from back.contracts.market import IMarketDataProvider
 from back.core.logger import logger
 from .cbr_rates import CBRRateProvider
 
-
 class BondsDataProvider(IMarketDataProvider):
-    def __init__(self, moex_base_url: str):
+    def __init__(self, moex_base_url: str, session: Optional[aiohttp.ClientSession] = None):
         self.moex_base_url = moex_base_url.rstrip('/')
         self.bond_boards = ['TQOB', 'TQCB', 'TQDB', 'TQRB', 'TQPB', 'TQNB']
-        self.cbr_provider = CBRRateProvider()
+        self.cbr_provider = CBRRateProvider(session)
         self.currency_rates = {}
+        self._session = session
 
     def get_cache_key(self) -> str:
         return "moex:bonds"
@@ -39,8 +38,8 @@ class BondsDataProvider(IMarketDataProvider):
             'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,MATDATE,COUPONVALUE,COUPONPERIOD,NEXTCOUPON,CURRENCYID,PREVPRICE,PREVWAPRICE,LOTSIZE,ISSUESIZE,FACEVALUE,FACEUNIT'
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params) as response:
+            if self._session:
+                async with self._session.get(url, params=params) as response:
                     if response.status != 200:
                         logger.error(f"MOEX securities API error: {response.status}")
                         return {}
@@ -49,22 +48,44 @@ class BondsDataProvider(IMarketDataProvider):
                     columns = securities.get('columns', [])
                     rows = securities.get('data', [])
                     return self._parse_securities(columns, rows)
+            else:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, params=params) as response:
+                        if response.status != 200:
+                            logger.error(f"MOEX securities API error: {response.status}")
+                            return {}
+                        data = await response.json()
+                        securities = data.get('securities', {})
+                        columns = securities.get('columns', [])
+                        rows = securities.get('data', [])
+                        return self._parse_securities(columns, rows)
         except Exception as e:
             logger.error(f"Error fetching securities: {e}")
             return {}
 
     async def _fetch_market_data_all_boards(self) -> Dict[str, Dict[str, Any]]:
         all_market_data = {}
-        async with aiohttp.ClientSession() as session:
+        if self._session:
             for board in self.bond_boards:
                 try:
-                    board_data = await self._fetch_board_market_data(session, board)
+                    board_data = await self._fetch_board_market_data(self._session, board)
                     for ticker, data in board_data.items():
                         if ticker not in all_market_data or board == 'TQOB':
                             all_market_data[ticker] = data
                 except Exception as e:
                     logger.warning(f"Error fetching market data for board {board}: {e}")
                     continue
+        else:
+            async with aiohttp.ClientSession() as session:
+                for board in self.bond_boards:
+                    try:
+                        board_data = await self._fetch_board_market_data(session, board)
+                        for ticker, data in board_data.items():
+                            if ticker not in all_market_data or board == 'TQOB':
+                                all_market_data[ticker] = data
+                    except Exception as e:
+                        logger.warning(f"Error fetching market data for board {board}: {e}")
+                        continue
         return all_market_data
 
     async def _fetch_board_market_data(self, session: aiohttp.ClientSession, board: str) -> Dict[str, Dict[str, Any]]:

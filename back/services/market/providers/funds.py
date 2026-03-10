@@ -1,13 +1,14 @@
 import aiohttp
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from back.contracts.market import IMarketDataProvider
 from back.core.logger import logger
 
 class FundsDataProvider(IMarketDataProvider):
-    def __init__(self, moex_base_url: str):
+    def __init__(self, moex_base_url: str, session: Optional[aiohttp.ClientSession] = None):
         self.moex_base_url = moex_base_url.rstrip()
         self.etf_boards = ['TQTF', 'TQTD', 'TQIF', 'TQFE']
+        self._session = session
 
     def get_cache_key(self) -> str:
         return "moex:funds:etf"
@@ -19,17 +20,15 @@ class FundsDataProvider(IMarketDataProvider):
         try:
             url = f"{self.moex_base_url}/engines/stock/markets/shares/boards/TQTF/securities.json"
             
-            async with aiohttp.ClientSession() as session:
+            if self._session:
                 securities_params = {
                     'iss.meta': 'off',
                     'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE',
                 }
-                
-                async with session.get(url, params=securities_params) as response:
+                async with self._session.get(url, params=securities_params) as response:
                     if response.status != 200:
                         logger.error(f"MOEX Funds API error: {response.status}")
                         return []
-                    
                     data = await response.json()
                     securities = data.get('securities', {}).get('data', [])
 
@@ -38,72 +37,95 @@ class FundsDataProvider(IMarketDataProvider):
                     'marketdata.columns': 'SECID,LAST,LASTTOPREVPRICE,OPEN,CHANGE,VALUE,UPDATETIME',
                 }
                 marketdata_url = url + "?iss.only=marketdata"
-                async with session.get(marketdata_url, params=marketdata_params) as response:
+                async with self._session.get(marketdata_url, params=marketdata_params) as response:
                     if response.status != 200:
                         logger.error(f"MOEX funds marketdata error: {response.status}")
                         return self._parse_securities_only(securities)
                     marketdata = await response.json()
                     market_data = marketdata.get('marketdata', {}).get('data', [])
+            else:
+                async with aiohttp.ClientSession() as session:
+                    securities_params = {
+                        'iss.meta': 'off',
+                        'securities.columns': 'SECID,SHORTNAME,SECNAME,ISIN,REGNUMBER,LOTSIZE',
+                    }
+                    async with session.get(url, params=securities_params) as response:
+                        if response.status != 200:
+                            logger.error(f"MOEX Funds API error: {response.status}")
+                            return []
+                        data = await response.json()
+                        securities = data.get('securities', {}).get('data', [])
 
-                market_dict = {}
-                for item in market_data:
-                    if item and len(item) >= 7:
-                        ticker = item[0]
-                        price = float(item[1]) if item[1] is not None else 0
-                        change_rub = float(item[2]) if item[2] is not None else 0
-                        
-            
-                        calculated_change_percent = 0
-                        if price > 0 and change_rub != 0:
-                            prev_price = price - change_rub
-                            if prev_price > 0:
-                                calculated_change_percent = (change_rub / prev_price) * 100
-                        
-                        market_dict[ticker] = {
-                            'price': price,
-                            'change': change_rub,
-                            'open': float(item[3]) if item[3] is not None else 0,
-                            'change_percent': calculated_change_percent,  
-                            'volume': float(item[5]) if item[5] is not None else 0,
-                            'update_time': item[6] if len(item) > 6 else None,
-                        }
+                    marketdata_params = {
+                        'iss.meta': 'off',
+                        'marketdata.columns': 'SECID,LAST,LASTTOPREVPRICE,OPEN,CHANGE,VALUE,UPDATETIME',
+                    }
+                    marketdata_url = url + "?iss.only=marketdata"
+                    async with session.get(marketdata_url, params=marketdata_params) as response:
+                        if response.status != 200:
+                            logger.error(f"MOEX funds marketdata error: {response.status}")
+                            return self._parse_securities_only(securities)
+                        marketdata = await response.json()
+                        market_data = marketdata.get('marketdata', {}).get('data', [])
 
-                result = []
-                for security in securities[:200]:
-                    if not security or len(security) < 6:
-                        continue
+            market_dict = {}
+            for item in market_data:
+                if item and len(item) >= 7:
+                    ticker = item[0]
+                    price = float(item[1]) if item[1] is not None else 0
+                    change_rub = float(item[2]) if item[2] is not None else 0
                     
-                    ticker = security[0]
-                    name = security[1]
-                    full_name = security[2]
-                    isin = security[3] if len(security) > 3 else None
-                    regnumber = security[4] if len(security) > 4 else None
-                    lotsize = int(security[5]) if len(security) > 5 and security[5] else 1
+                    calculated_change_percent = 0
+                    if price > 0 and change_rub != 0:
+                        prev_price = price - change_rub
+                        if prev_price > 0:
+                            calculated_change_percent = (change_rub / prev_price) * 100
+                    
+                    market_dict[ticker] = {
+                        'price': price,
+                        'change': change_rub,
+                        'open': float(item[3]) if item[3] is not None else 0,
+                        'change_percent': calculated_change_percent,  
+                        'volume': float(item[5]) if item[5] is not None else 0,
+                        'update_time': item[6] if len(item) > 6 else None,
+                    }
 
-                    market_info = market_dict.get(
-                        ticker,
-                        {'price': 0, 'change': 0, 'open': 0, 'change_percent': 0, 'volume': 0, 'update_time': None},
-                    )
-
-                    result.append({
-                        'ticker': ticker,
-                        'name': name,
-                        'full_name': full_name,
-                        'price': market_info['price'],
-                        'change': market_info['change'],
-                        'open_price': market_info['open'],
-                        'change_percent': market_info['change_percent'],  # ТЕПЕРЬ ПРАВИЛЬНЫЕ ПРОЦЕНТЫ
-                        'volume': market_info['volume'],
-                        'update_time': market_info['update_time'],
-                        'isin': isin,
-                        'regnumber': regnumber,
-                        'lotsize': lotsize,
-                        'last_updated': datetime.now().isoformat(),
-                        'asset_type': 'fund',
-                    })
+            result = []
+            for security in securities[:200]:
+                if not security or len(security) < 6:
+                    continue
                 
-                logger.info(f"Fetched {len(result)} funds from MOEX with recalculated percentages")
-                return result
+                ticker = security[0]
+                name = security[1]
+                full_name = security[2]
+                isin = security[3] if len(security) > 3 else None
+                regnumber = security[4] if len(security) > 4 else None
+                lotsize = int(security[5]) if len(security) > 5 and security[5] else 1
+
+                market_info = market_dict.get(
+                    ticker,
+                    {'price': 0, 'change': 0, 'open': 0, 'change_percent': 0, 'volume': 0, 'update_time': None},
+                )
+
+                result.append({
+                    'ticker': ticker,
+                    'name': name,
+                    'full_name': full_name,
+                    'price': market_info['price'],
+                    'change': market_info['change'],
+                    'open_price': market_info['open'],
+                    'change_percent': market_info['change_percent'],
+                    'volume': market_info['volume'],
+                    'update_time': market_info['update_time'],
+                    'isin': isin,
+                    'regnumber': regnumber,
+                    'lotsize': lotsize,
+                    'last_updated': datetime.now().isoformat(),
+                    'asset_type': 'fund',
+                })
+            
+            logger.info(f"Fetched {len(result)} funds from MOEX with recalculated percentages")
+            return result
 
         except aiohttp.ClientError as e:
             logger.error(f"Network error fetching MOEX funds data: {e}")

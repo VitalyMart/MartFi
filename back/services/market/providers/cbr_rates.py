@@ -1,14 +1,13 @@
-# FILE: ./back/services/market/providers/cbr_rates.py
 import aiohttp
 import xml.etree.ElementTree as ET
-from datetime import datetime, date
+from datetime import date
 from typing import Dict, Optional
 from back.core.logger import logger
 
-
 class CBRRateProvider:
-    def __init__(self):
+    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
         self.base_url = "https://www.cbr.ru/scripts/XML_daily.asp"
+        self._session = session
 
     async def fetch_rates(self, target_date: Optional[date] = None) -> Dict[str, float]:
         try:
@@ -16,15 +15,21 @@ class CBRRateProvider:
             if target_date:
                 params['date_req'] = target_date.strftime('%d/%m/%Y')
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(self.base_url, params=params) as response:
+            if self._session:
+                async with self._session.get(self.base_url, params=params) as response:
                     if response.status != 200:
                         logger.error(f"CBR API error: {response.status}")
                         return {}
-
                     text_data = await response.text()
                     return self._parse_xml(text_data)
-
+            else:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(self.base_url, params=params) as response:
+                        if response.status != 200:
+                            logger.error(f"CBR API error: {response.status}")
+                            return {}
+                        text_data = await response.text()
+                        return self._parse_xml(text_data)
         except aiohttp.ClientError as e:
             logger.error(f"Network error fetching CBR rates: {e}")
             return {}
