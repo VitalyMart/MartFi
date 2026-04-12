@@ -1,11 +1,9 @@
-# back/services/rag_service.py
 import os
 import json
 import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
-import aiofiles
 import asyncio
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
@@ -32,11 +30,9 @@ class RAGService:
             logger.info("Initializing RAG service (singleton)")
             self.hf_token = os.getenv("TOKEN_HUGGINGFACE")
             if not self.hf_token:
-                logger.warning("TOKEN_HUGGINGFACE not found in .env, using unauthenticated requests")
+                logger.warning("TOKEN_HUGGINGFACE not found in .env")
             self._init_embeddings()
             self._init_qdrant()
-            self.knowledge_base_path = Path(__file__).parent.parent.parent / "rag_knowledge_data"
-            self.documents = {}
             self.cache_ttl = 3600
             self.top_k = 5
             self.initialized = True
@@ -58,7 +54,7 @@ class RAGService:
 
     def _init_qdrant(self):
         if RAGService._async_client is None:
-            logger.info(f"Connecting to Qdrant (async): {qdrant_settings.QDRANT_HOST}:{qdrant_settings.QDRANT_PORT}")
+            logger.info(f"Connecting to Qdrant: {qdrant_settings.QDRANT_HOST}:{qdrant_settings.QDRANT_PORT}")
             RAGService._async_client = AsyncQdrantClient(
                 host=qdrant_settings.QDRANT_HOST,
                 port=qdrant_settings.QDRANT_PORT,
@@ -66,29 +62,12 @@ class RAGService:
             logger.info("Async Qdrant client created")
         self.async_client = RAGService._async_client
 
-    async def _load_documents_async(self):
-        if not self.knowledge_base_path.exists():
-            logger.warning(f"Knowledge base path not found: {self.knowledge_base_path}")
-            return
-        for file_path in self.knowledge_base_path.glob("*.txt"):
-            try:
-                async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
-                    content = await f.read()
-                doc_name = file_path.stem
-                self.documents[doc_name] = {
-                    'name': doc_name,
-                    'content': content,
-                    'path': str(file_path),
-                    'loaded_at': datetime.now().isoformat()
-                }
-            except Exception as e:
-                logger.error(f"Error loading document {file_path}: {e}")
-
     async def search_relevant_chunks(self, query: str, top_k: int = None) -> List[Document]:
         try:
             k = top_k or self.top_k
             loop = asyncio.get_event_loop()
             query_vector = await loop.run_in_executor(None, self.embeddings.embed_query, query)
+            
             results = await self.async_client.query_points(
                 collection_name=qdrant_settings.COLLECTION_NAME,
                 query=query_vector,
@@ -96,22 +75,26 @@ class RAGService:
                 with_payload=True,
                 with_vectors=False
             )
+            
             documents = []
             for point in results.points:
-                doc = Document(
-                    page_content=point.payload.get("content", ""),
-                    metadata={
-                        "source": point.payload.get("source", ""),
-                        "summary": point.payload.get("summary", ""),
-                        "keywords": point.payload.get("keywords", ""),
-                        "questions": point.payload.get("questions", ""),
-                    }
-                )
-                documents.append(doc)
+                if point.payload:
+                    # ✅ ИСПРАВЛЕНО: правильные ключи из Qdrant
+                    doc = Document(
+                        page_content=point.payload.get("page_content", ""),
+                        metadata={
+                            "source": point.payload.get("metadata", {}).get("source", ""),
+                            "summary": point.payload.get("metadata", {}).get("summary", ""),
+                            "keywords": point.payload.get("metadata", {}).get("keywords", ""),
+                            "questions": point.payload.get("metadata", {}).get("questions", ""),
+                        }
+                    )
+                    documents.append(doc)
+            
             logger.info(f"Found {len(documents)} relevant chunks for query")
             return documents
         except Exception as e:
-            logger.error(f"Error searching chunks: {e}")
+            logger.error(f"Error searching chunks: {e}", exc_info=True)
             return []
 
     def build_context(self, documents: List[Document]) -> str:
@@ -162,22 +145,3 @@ class RAGService:
             logger.error(f"Redis cache set error: {e}")
 
         return result
-
-    def get_documents_list(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "name": doc['name'],
-                "display_name": self._get_doc_display_name(doc['name']),
-                "size": len(doc['content']),
-                "chunks": 0
-            }
-            for doc in self.documents.values()
-        ]
-
-    async def refresh_knowledge_base(self):
-        self.documents = {}
-        await self._load_documents_async()
-        return {
-            "success": True,
-            "documents_loaded": len(self.documents)
-        }

@@ -5,7 +5,6 @@ class AssistantChat {
         this.messagesContainer = document.getElementById('chatMessages');
         this.input = document.getElementById('messageInput');
         this.sendButton = document.getElementById('sendButton');
-        this.useRagToggle = document.getElementById('useRagToggle');
         this.clearHistoryBtn = document.getElementById('clearHistory');
         this.documentsList = document.getElementById('documentsList');
         this.isLoading = false;
@@ -124,7 +123,6 @@ class AssistantChat {
                 },
                 body: JSON.stringify({
                     message: message,
-                    use_rag: this.useRagToggle.checked
                 })
             });
 

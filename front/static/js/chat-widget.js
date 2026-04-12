@@ -59,12 +59,7 @@ class ChatWidget {
                 </div>
                 <div class="chat-messages"></div>
                 <div class="chat-input-area">
-                    <div class="rag-toggle">
-                        <label>
-                            <input type="checkbox" ${this.useRag ? 'checked' : ''}>
-                            Использовать базу знаний
-                        </label>
-                    </div>
+                    
                     <div class="input-wrapper">
                         <textarea class="chat-input" placeholder="Задайте вопрос..."></textarea>
                         <button class="chat-send-btn" disabled>

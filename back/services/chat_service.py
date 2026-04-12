@@ -12,11 +12,9 @@ class ChatService:
         self.rag = rag_service
         self.history_ttl = 86400
 
-    async def process_message(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, use_rag: bool = True, model: Optional[str] = None) -> Dict[str, Any]:
+    async def process_message(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, model: Optional[str] = None) -> Dict[str, Any]:
         history = await self._get_chat_history(user_id, session_id)
-        rag_context = None
-        if use_rag:
-            rag_context = await self.rag.get_rag_response(message, user_id)
+        rag_context = await self.rag.get_rag_response(message, user_id)
 
         messages = self._build_messages(history, message, rag_context)
         start_time = datetime.now()
@@ -37,7 +35,6 @@ class ChatService:
             user_message=message,
             assistant_message=assistant_message,
             metadata={
-                "use_rag": use_rag,
                 "rag_context_used": rag_context.get("context_used") if rag_context else False,
                 "documents_used": rag_context.get("documents_used") if rag_context else [],
                 "model": model or self.openrouter.default_model,
@@ -48,17 +45,15 @@ class ChatService:
         return {
             "success": True,
             "message": assistant_message,
-            "rag_used": use_rag and rag_context and rag_context.get("context_used"),
+            "rag_used": rag_context and rag_context.get("context_used"),
             "documents_used": rag_context.get("documents_used") if rag_context else [],
             "response_time": response_time,
             "model": model or self.openrouter.default_model
         }
 
-    async def process_message_stream(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, use_rag: bool = True, model: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def process_message_stream(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, model: Optional[str] = None) -> AsyncGenerator[str, None]:
         history = await self._get_chat_history(user_id, session_id)
-        rag_context = None
-        if use_rag:
-            rag_context = await self.rag.get_rag_response(message, user_id)
+        rag_context = await self.rag.get_rag_response(message, user_id)
 
         messages = self._build_messages(history, message, rag_context)
         full_response = ""
@@ -87,7 +82,6 @@ class ChatService:
                 user_message=message,
                 assistant_message=full_response,
                 metadata={
-                    "use_rag": use_rag,
                     "rag_context_used": rag_context.get("context_used") if rag_context else False,
                     "documents_used": rag_context.get("documents_used") if rag_context else [],
                     "model": model or self.openrouter.default_model,
