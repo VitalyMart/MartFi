@@ -14,7 +14,6 @@ class AssistantChat {
 
     init() {
         this.setupEventListeners();
-        this.loadDocuments();
         this.loadHistory();
     }
 
@@ -197,35 +196,6 @@ class AssistantChat {
         }
     }
 
-    async loadDocuments() {
-        try {
-            const response = await fetch(`${this.apiUrl}/documents`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.documents && data.documents.length > 0) {
-                    this.renderDocuments(data.documents);
-                } else {
-                    this.documentsList.innerHTML = '<div class="loading">Нет загруженных документов</div>';
-                }
-            }
-        } catch (error) {
-            console.error('Error loading documents:', error);
-            this.documentsList.innerHTML = '<div class="loading">Ошибка загрузки документов</div>';
-        }
-    }
-
-    renderDocuments(documents) {
-        this.documentsList.innerHTML = '';
-        documents.forEach(doc => {
-            const docEl = document.createElement('div');
-            docEl.className = 'document-item';
-            docEl.innerHTML = `
-                <div class="document-name">${doc.display_name}</div>
-                <div class="document-meta">${doc.chunks} фрагментов • ${Math.round(doc.size / 1024)} KB</div>
-            `;
-            this.documentsList.appendChild(docEl);
-        });
-    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

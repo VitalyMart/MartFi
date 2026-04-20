@@ -242,19 +242,6 @@
     color: #9ca3af;
 }
 
-.knowledge-base-info {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    height: fit-content;
-}
-
-.knowledge-base-info h3 {
-    font-size: 16px;
-    color: #1f2937;
-    margin-bottom: 16px;
-}
 
 .documents-list {
     display: flex;
@@ -290,10 +277,6 @@
 @media (max-width: 768px) {
     .assistant-container {
         grid-template-columns: 1fr;
-    }
-    
-    .knowledge-base-info {
-        order: -1;
     }
 }
 .message-assistant .message-content table {
