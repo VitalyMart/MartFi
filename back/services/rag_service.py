@@ -79,7 +79,6 @@ class RAGService:
             documents = []
             for point in results.points:
                 if point.payload:
-                    # ✅ ИСПРАВЛЕНО: правильные ключи из Qdrant
                     doc = Document(
                         page_content=point.payload.get("page_content", ""),
                         metadata={

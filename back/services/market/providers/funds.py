@@ -74,7 +74,7 @@ class FundsDataProvider(IMarketDataProvider):
                     ticker = item[0]
                     price = float(item[1]) if item[1] is not None else 0
                     change_percent = float(item[2]) if item[2] is not None else 0
-                    change_rub = 0
+                    change_rub = 0.0
                     if price > 0 and change_percent != 0:
                         change_rub = price * change_percent / 100
                     
