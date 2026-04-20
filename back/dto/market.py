@@ -6,6 +6,8 @@ from ..auth.entities.user import User as DomainUser
 class MainPageData(BaseModel):
     user: DomainUser
     csrf_token: str
+    top_gainers: List[Dict[str, Any]] = []
+    top_losers: List[Dict[str, Any]] = []
 
 
 class MarketPageData(BaseModel):

@@ -1,4 +1,5 @@
 import json
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -19,6 +20,48 @@ class MarketService:
         self.security_service = security_service
         self.data_providers = data_providers
         self.cache_ttl = 300
+        self.update_interval = 30
+        self._updater_task = None
+
+    async def start_background_updater(self):
+        if self._updater_task is None:
+            self._updater_task = asyncio.create_task(self._background_updater())
+            logger.info("Started background market data updater (every 30 seconds)")
+
+    async def stop_background_updater(self):
+        if self._updater_task:
+            self._updater_task.cancel()
+            try:
+                await self._updater_task
+            except asyncio.CancelledError:
+                pass
+            self._updater_task = None
+            logger.info("Stopped background market data updater")
+
+    async def _background_updater(self):
+        while True:
+            try:
+                await asyncio.sleep(self.update_interval)
+                for provider in self.data_providers:
+                    asset_type = provider.get_asset_type()
+                    await self._force_refresh_cache(asset_type)
+                logger.debug(f"Auto-refreshed all market data at {datetime.now()}")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Background updater error: {e}")
+
+    async def _force_refresh_cache(self, asset_type: str):
+        provider = self._get_provider(asset_type)
+        if not provider:
+            return
+        try:
+            data = await provider.fetch_data()
+            cache_key = provider.get_cache_key()
+            await redis_client.setex(cache_key, self.cache_ttl, json.dumps(data))
+            logger.debug(f"Auto-refreshed {asset_type}: {len(data)} items")
+        except Exception as e:
+            logger.error(f"Error auto-refreshing {asset_type}: {e}")
 
     async def get_cached_data(self, asset_type: str) -> List[Dict[str, Any]]:
         provider = self._get_provider(asset_type)

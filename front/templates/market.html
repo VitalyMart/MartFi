@@ -84,17 +84,11 @@
                                 <option value="name" {% if sort_by=='name' %}selected{% endif %}>По названию</option>
                                 <option value="ticker" {% if sort_by=='ticker' %}selected{% endif %}>По тикеру</option>
                                 <option value="price" {% if sort_by=='price' %}selected{% endif %}>По цене</option>
+                                <option value="change_percent" {% if sort_by=='change_percent' %}selected{% endif %}>По изменению %</option>
                                 {% if asset_type == 'bond' %}
-                                <option value="yield" {% if sort_by=='yield' %}selected{% endif %}>По доходности
-                                </option>
-                                <option value="coupon_value" {% if sort_by=='coupon_value' %}selected{% endif %}>По
-                                    купону</option>
-                                <option value="maturity_date" {% if sort_by=='maturity_date' %}selected{% endif %}>По
-                                    дате погашения</option>
-                                {% endif %}
-                                {% if asset_type == 'currency' or asset_type == 'index' %}
-                                <option value="change_percent" {% if sort_by=='change_percent' %}selected{% endif %}>По
-                                    изменению %</option>
+                                <option value="yield" {% if sort_by=='yield' %}selected{% endif %}>По доходности</option>
+                                <option value="coupon_value" {% if sort_by=='coupon_value' %}selected{% endif %}>По купону</option>
+                                <option value="maturity_date" {% if sort_by=='maturity_date' %}selected{% endif %}>По дате погашения</option>
                                 {% endif %}
                                 {% if asset_type == 'index' %}
                                 <option value="volume" {% if sort_by=='volume' %}selected{% endif %}>По объему</option>
@@ -104,8 +98,7 @@
                         <div class="sort-group">
                             <label for="sortOrderSelect" class="sort-label">Порядок:</label>
                             <select name="sort_order" class="sort-order-select" id="sortOrderSelect">
-                                <option value="asc" {% if sort_order=='asc' %}selected{% endif %}>По возрастанию
-                                </option>
+                                <option value="asc" {% if sort_order=='asc' %}selected{% endif %}>По возрастанию</option>
                                 <option value="desc" {% if sort_order=='desc' %}selected{% endif %}>По убыванию</option>
                             </select>
                         </div>
@@ -124,7 +117,6 @@
             </div>
         </div>
         <div class="tabs-content">
-            <!-- Вкладка Акции -->
             <div class="tab-pane {% if asset_type == 'stock' %}active{% endif %}" id="stock">
                 <div class="assets-container">
                     {% if stocks and asset_type == 'stock' %}
@@ -237,7 +229,6 @@
                 </div>
             </div>
 
-            <!-- Вкладка Облигации -->
             <div class="tab-pane {% if asset_type == 'bond' %}active{% endif %}" id="bond">
                 <div class="assets-container">
                     {% if stocks and asset_type == 'bond' %}
@@ -368,7 +359,6 @@
                 </div>
             </div>
 
-            <!-- Вкладка Фонды -->
             <div class="tab-pane {% if asset_type == 'fund' %}active{% endif %}" id="fund">
                 <div class="assets-container">
                     {% if stocks and asset_type == 'fund' %}
@@ -483,7 +473,7 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- Вкладка Валюта -->
+
             <div class="tab-pane {% if asset_type == 'currency' %}active{% endif %}" id="currency">
                 <div class="assets-container">
                     {% if stocks and asset_type == 'currency' %}
@@ -583,7 +573,7 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- Вкладка Индексы -->
+
             <div class="tab-pane {% if asset_type == 'index' %}active{% endif %}" id="index">
                 <div class="assets-container">
                     {% if stocks and asset_type == 'index' %}
@@ -689,7 +679,6 @@
     </div>
 </div>
 
-<!-- Модальное окно добавления в портфель -->
 <div class="modal-overlay" id="addToPortfolioModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -756,5 +745,155 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function autoRefreshMarketData() {
+    const currentAssetType = window.location.pathname.split('/').pop();
+    const searchQuery = document.querySelector('.search-input')?.value || '';
+    const sortBy = document.getElementById('sortBySelect')?.value || 'name';
+    const sortOrder = document.getElementById('sortOrderSelect')?.value || 'asc';
+    const page = new URLSearchParams(window.location.search).get('page') || 1;
+    
+    fetch(`/api/market/stocks/${currentAssetType}?search=${encodeURIComponent(searchQuery)}&sort_by=${sortBy}&sort_order=${sortOrder}&page=${page}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateMarketCards(data.data);
+                updatePagination(data.pagination);
+                updateStats(data.pagination.total_count, data.pagination.page, data.pagination.total_pages);
+            }
+        })
+        .catch(error => console.error('Auto-refresh failed:', error));
+}
+
+function updateMarketCards(stocks) {
+    const container = document.querySelector('.assets-grid');
+    if (!container) return;
+    
+    let newHtml = '';
+    stocks.forEach(stock => {
+        newHtml += createAssetCardHtml(stock);
+    });
+    container.innerHTML = newHtml;
+}
+
+function updatePagination(pagination) {
+    const paginationContainer = document.querySelector('.pagination');
+    if (!paginationContainer || pagination.total_pages <= 1) {
+        if (paginationContainer) paginationContainer.style.display = 'none';
+        return;
+    }
+    
+    paginationContainer.style.display = 'flex';
+    const currentPage = pagination.page;
+    const totalPages = pagination.total_pages;
+    
+    let paginationHtml = '';
+    if (currentPage > 1) {
+        paginationHtml += `<a href="#" class="page-btn prev-btn" data-page="${currentPage - 1}">Назад</a>`;
+    }
+    paginationHtml += `<div class="page-numbers">`;
+    for (let p = 1; p <= totalPages; p++) {
+        if (p === currentPage) {
+            paginationHtml += `<span class="page-number active">${p}</span>`;
+        } else if (p >= currentPage - 2 && p <= currentPage + 2) {
+            paginationHtml += `<a href="#" class="page-number" data-page="${p}">${p}</a>`;
+        }
+    }
+    paginationHtml += `</div>`;
+    if (currentPage < totalPages) {
+        paginationHtml += `<a href="#" class="page-btn next-btn" data-page="${currentPage + 1}">Вперед</a>`;
+    }
+    paginationContainer.innerHTML = paginationHtml;
+}
+
+function updateStats(totalCount, currentPage, totalPages) {
+    const statsContainer = document.querySelector('.market-stats');
+    if (statsContainer) {
+        statsContainer.innerHTML = `
+            <div class="stats-item">
+                <span class="stats-label">Найдено:</span>
+                <span class="stats-value">${totalCount}</span>
+            </div>
+            <div class="stats-item">
+                <span class="stats-label">Страница:</span>
+                <span class="stats-value">${currentPage} из ${totalPages}</span>
+            </div>
+        `;
+    }
+}
+
+function createAssetCardHtml(asset) {
+    const changeClass = asset.change > 0 ? 'positive' : (asset.change < 0 ? 'negative' : '');
+    const changeSymbol = asset.change > 0 ? '+' : '';
+    const changePercent = asset.change_percent || 0;
+    const changePercentClass = changePercent > 0 ? 'positive' : (changePercent < 0 ? 'negative' : '');
+    const changePercentSymbol = changePercent > 0 ? '+' : '';
+    
+    let priceDisplay = '';
+    if (asset.asset_type === 'bond') {
+        if (asset.is_ruble) {
+            if (asset.price_rub && asset.price_rub > 0) {
+                priceDisplay = `${asset.price_rub.toFixed(2)} ₽ <small class="price-percent">(${asset.price.toFixed(2)}%)</small>`;
+            } else {
+                priceDisplay = `${asset.price.toFixed(2)}%`;
+            }
+        } else {
+            if (asset.price_rub && asset.price_rub > 0) {
+                priceDisplay = `<div class="currency-price"><span class="price-rub">${asset.price_rub.toFixed(2)} ₽</span><span class="price-percent">${asset.price.toFixed(2)}%</span><span class="currency-badge">${asset.currency || 'USD'}</span></div>`;
+            } else {
+                priceDisplay = `${asset.price.toFixed(2)}% (${asset.currency || 'USD'})`;
+            }
+        }
+    } else {
+        priceDisplay = asset.price > 0 ? `${asset.price.toFixed(2)} ₽` : 'Нет данных';
+    }
+    
+    return `
+        <div class="asset-card ${asset.asset_type}-card">
+            <div class="asset-header">
+                <div class="asset-ticker">${escapeHtml(asset.ticker)}</div>
+                <div class="asset-actions">
+                    <button class="add-to-portfolio-btn" 
+                        data-ticker="${escapeHtml(asset.ticker)}"
+                        data-name="${escapeHtml(asset.name)}" 
+                        data-asset-type="${asset.asset_type}" 
+                        data-price="${asset.price || 0}">
+                        <svg class="add-icon" viewBox="0 0 24 24">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                    </button>
+                    <div class="asset-price ${changeClass}">
+                        ${priceDisplay}
+                    </div>
+                </div>
+            </div>
+            <div class="asset-body">
+                <h3 class="asset-name">${escapeHtml(asset.name)}</h3>
+            </div>
+            <div class="asset-footer">
+                <div class="change-info">
+                    <div class="change-amount ${changeClass}">
+                        ${changeSymbol}${Math.abs(asset.change).toFixed(2)} ₽
+                    </div>
+                    <div class="change-percent ${changePercentClass}">
+                        ${changePercentSymbol}${Math.abs(changePercent).toFixed(2)}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+setInterval(autoRefreshMarketData, 30000);
 </script>
 {% endblock %}

@@ -1,13 +1,18 @@
 {% extends "layout.html" %}
 
-{% block title %}Главная{% endblock %}
+{% block title %}Главная - MartFi{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/index.css">
+{% endblock %}
 
 {% block content %}
 <div class="content-header">
     <h1>Главная</h1>
+    <p class="header-description">Обзор рынка и ваши инвестиции</p>
 </div>
 
-<div class="card">
+<div class="card welcome-card">
     <h2>Добро пожаловать в MartFi!</h2>
     <p class="project-description">
         MartFi — это современная финансовая платформа для управления вашими инвестициями. 
@@ -17,21 +22,51 @@
     
     <div class="features-grid">
         <div class="feature-item">
+            <div class="feature-icon">🏦</div>
             <h3>Рынок</h3>
             <p>Управление и отслеживание ваших инвестиционных активов</p>
         </div>
         <div class="feature-item">
+            <div class="feature-icon">🤖</div>
             <h3>Ассистент</h3>
             <p>AI-помощник для финансовых рекомендаций и аналитики</p>
         </div>
         <div class="feature-item">
+            <div class="feature-icon">📊</div>
             <h3>Портфель</h3>
             <p>Детальный анализ вашего инвестиционного портфеля</p>
         </div>
         <div class="feature-item">
+            <div class="feature-icon">📚</div>
             <h3>Обучение</h3>
             <p>Образовательные материалы по инвестированию</p>
         </div>
     </div>
 </div>
+
+<div class="leaders-section">
+    <div class="leaders-card gainers-card">
+        <div class="card-header">
+            <h3>Лидеры роста</h3>
+            <span class="card-badge">Топ 5</span>
+        </div>
+        <div class="leaders-list" id="gainersList">
+            <div class="loading-leaders">Загрузка данных...</div>
+        </div>
+    </div>
+
+    <div class="leaders-card losers-card">
+        <div class="card-header">
+            <h3>Лидеры падения</h3>
+            <span class="card-badge">Топ 5</span>
+        </div>
+        <div class="leaders-list" id="losersList">
+            <div class="loading-leaders">Загрузка данных...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/index.js"></script>
 {% endblock %}
