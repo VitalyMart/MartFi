@@ -12,6 +12,7 @@ from ..core.logger import logger
 from ..core.redis_client import redis_client
 from ..config_qdrant import qdrant_settings
 from dotenv import load_dotenv
+from typing import Optional, List, Dict, Any
 
 load_dotenv()
 
@@ -34,7 +35,7 @@ class RAGService:
             self._init_embeddings()
             self._init_qdrant()
             self.cache_ttl = 3600
-            self.top_k = 5
+            self.top_k = 10
             self.initialized = True
             logger.info("RAG service initialized successfully")
 
@@ -62,35 +63,55 @@ class RAGService:
             logger.info("Async Qdrant client created")
         self.async_client = RAGService._async_client
 
-    async def search_relevant_chunks(self, query: str, top_k: int = None) -> List[Document]:
+    async def search_relevant_chunks(self, query: str, top_k: Optional[int] = None) -> List[Document]:
         try:
             k = top_k or self.top_k
             loop = asyncio.get_event_loop()
             query_vector = await loop.run_in_executor(None, self.embeddings.embed_query, query)
             
-            results = await self.async_client.query_points(
-                collection_name=qdrant_settings.COLLECTION_NAME,
-                query=query_vector,
-                limit=k,
-                with_payload=True,
-                with_vectors=False
-            )
+            all_documents = []
             
-            documents = []
-            for point in results.points:
-                if point.payload:
-                    doc = Document(
-                        page_content=point.payload.get("page_content", ""),
-                        metadata={
-                            "source": point.payload.get("metadata", {}).get("source", ""),
-                            "summary": point.payload.get("metadata", {}).get("summary", ""),
-                            "keywords": point.payload.get("metadata", {}).get("keywords", ""),
-                            "questions": point.payload.get("metadata", {}).get("questions", ""),
-                        }
+            for collection_name in qdrant_settings.ALL_COLLECTIONS:
+                try:
+                    results = await self.async_client.query_points(
+                        collection_name=collection_name,
+                        query=query_vector,
+                        limit=k,
+                        with_payload=True,
+                        with_vectors=False
                     )
-                    documents.append(doc)
+                    
+                    for point in results.points:
+                        if point.payload:
+                            payload = point.payload
+                            metadata_dict = payload.get("metadata", {})
+                            content = payload.get("page_content", "")
+                            
+                            doc = Document(
+                                page_content=content,
+                                metadata={
+                                    "source": metadata_dict.get("source", ""),
+                                    "summary": metadata_dict.get("summary", ""),
+                                    "keywords": metadata_dict.get("keywords", ""),
+                                    "questions": metadata_dict.get("questions", ""),
+                                    "company": metadata_dict.get("company", ""),
+                                    "ticker": metadata_dict.get("ticker", ""),
+                                    "period": metadata_dict.get("period", ""),
+                                    "quarter": metadata_dict.get("quarter", ""),
+                                    "report_type": metadata_dict.get("report_type", ""),
+                                    "report_date": metadata_dict.get("report_date", ""),
+                                    "currency": metadata_dict.get("currency", ""),
+                                    "collection": collection_name,
+                                }
+                            )
+                            all_documents.append((point.score, doc))
+                except Exception as e:
+                    logger.error(f"Error searching collection {collection_name}: {e}")
             
-            logger.info(f"Found {len(documents)} relevant chunks for query")
+            all_documents.sort(key=lambda x: x[0], reverse=True)
+            documents = [doc for _, doc in all_documents[:k]]
+            
+            logger.info(f"Found {len(documents)} relevant chunks")
             return documents
         except Exception as e:
             logger.error(f"Error searching chunks: {e}", exc_info=True)
@@ -144,3 +165,4 @@ class RAGService:
             logger.error(f"Redis cache set error: {e}")
 
         return result
+    
