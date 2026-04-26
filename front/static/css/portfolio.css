@@ -530,3 +530,61 @@
         max-height: calc(100vh - 2rem);
     }
 }
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e0;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.copy-btn.copied {
+    background: #059669;
+    color: white;
+    border-color: #059669;
+}
+
+.copy-btn.copied svg {
+    fill: white;
+}
+
+.copy-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+.copy-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 0.75rem 1.25rem;
+    background: #059669;
+    color: white;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    z-index: 10000;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.copy-notification.show {
+    transform: translateY(0);
+    opacity: 1;
+}

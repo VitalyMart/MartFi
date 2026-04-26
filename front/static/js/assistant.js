@@ -6,8 +6,9 @@ class AssistantChat {
         this.input = document.getElementById('messageInput');
         this.sendButton = document.getElementById('sendButton');
         this.clearHistoryBtn = document.getElementById('clearHistory');
-        this.documentsList = document.getElementById('documentsList');
+        this.reportingModeBtn = document.getElementById('reportingModeBtn');
         this.isLoading = false;
+        this.reportingMode = false;
         this.markdownParser = new MarkdownParser();
         this.init();
     }
@@ -15,6 +16,7 @@ class AssistantChat {
     init() {
         this.setupEventListeners();
         this.loadHistory();
+        this.updateReportingModeUI();
     }
 
     setupEventListeners() {
@@ -41,6 +43,26 @@ class AssistantChat {
         this.clearHistoryBtn.addEventListener('click', () => {
             this.clearHistory();
         });
+
+        this.reportingModeBtn.addEventListener('click', () => {
+            this.toggleReportingMode();
+        });
+    }
+
+    toggleReportingMode() {
+        this.reportingMode = !this.reportingMode;
+        this.updateReportingModeUI();
+        
+        const modeText = this.reportingMode ? 'включен' : 'выключен';
+        this.addSystemMessage(`Режим отчетности ${modeText}`);
+    }
+
+    updateReportingModeUI() {
+        if (this.reportingMode) {
+            this.reportingModeBtn.classList.add('active');
+        } else {
+            this.reportingModeBtn.classList.remove('active');
+        }
     }
 
     autoResizeTextarea() {
@@ -57,6 +79,9 @@ class AssistantChat {
         
         if (role === 'assistant') {
             contentDiv.innerHTML = this.markdownParser.parse(content);
+        } else if (role === 'system') {
+            contentDiv.textContent = content;
+            messageDiv.classList.add('message-system');
         } else {
             contentDiv.textContent = content;
         }
@@ -74,6 +99,10 @@ class AssistantChat {
         
         this.messagesContainer.appendChild(messageDiv);
         this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+    }
+
+    addSystemMessage(content) {
+        this.addMessage('system', content);
     }
 
     updateLastMessage(content) {
@@ -122,6 +151,7 @@ class AssistantChat {
                 },
                 body: JSON.stringify({
                     message: message,
+                    reporting_mode: this.reportingMode
                 })
             });
 
@@ -169,9 +199,13 @@ class AssistantChat {
             const response = await fetch(`${this.apiUrl}/history`);
             if (response.ok) {
                 const data = await response.json();
-                if (data.messages) {
-                    data.messages.forEach(msg => {
-                        this.addMessage(msg.role, msg.content);
+                if (data.history) {
+                    data.history.forEach(msg => {
+                        if (msg.role === 'user') {
+                            this.addMessage('user', msg.content);
+                        } else if (msg.role === 'assistant') {
+                            this.addMessage('assistant', msg.content);
+                        }
                     });
                 }
             }
@@ -195,7 +229,6 @@ class AssistantChat {
             console.error('Error clearing history:', error);
         }
     }
-
 }
 
 document.addEventListener('DOMContentLoaded', () => {

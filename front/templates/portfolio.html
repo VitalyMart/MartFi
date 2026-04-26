@@ -13,10 +13,10 @@
             <h1 class="portfolio-title">Портфель</h1>
             <p class="portfolio-subtitle">Управление вашими инвестициями</p>
         </div>
-        
+
         <button class="btn btn-primary" id="addAssetBtn">
             <svg class="btn-icon" viewBox="0 0 24 24">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
             </svg>
             Добавить актив
         </button>
@@ -27,15 +27,17 @@
         <div class="summary-card">
             <div class="summary-icon">
                 <svg viewBox="0 0 24 24">
-                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
                 </svg>
             </div>
             <div class="summary-content">
                 <div class="summary-label">Текущая стоимость</div>
-                <div class="summary-value {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
+                <div
+                    class="summary-value {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
                     {{ "{:,.2f}".format(portfolio_summary.total_current_value).replace(",", " ") }} ₽
                 </div>
-                <div class="summary-change {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
+                <div
+                    class="summary-change {% if portfolio_summary.total_change >= 0 %}positive{% else %}negative{% endif %}">
                     {% if portfolio_summary.total_change >= 0 %}+{% endif %}
                     {{ "{:,.2f}".format(portfolio_summary.total_change).replace(",", " ") }} ₽
                     ({% if portfolio_summary.total_change_percent >= 0 %}+{% endif %}
@@ -43,11 +45,11 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="summary-card">
             <div class="summary-icon">
                 <svg viewBox="0 0 24 24">
-                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
                 </svg>
             </div>
             <div class="summary-content">
@@ -64,16 +66,25 @@
     <div class="portfolio-table-container">
         <div class="table-header">
             <h2>Ваши активы</h2>
+
             <div class="table-actions">
-                <button class="btn btn-secondary" id="refreshPortfolio">
+                <button class="copy-btn" id="copyPortfolioBtn">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                    </svg>
+                    Копировать портфель
+                </button>
+                <button class="btn-secondary" id="refreshPortfolio">
                     <svg class="btn-icon" viewBox="0 0 24 24">
-                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        <path
+                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                     </svg>
                     Обновить
                 </button>
             </div>
         </div>
-        
+
         {% if portfolio_items %}
         <div class="table-responsive">
             <table class="portfolio-table">
@@ -104,17 +115,19 @@
                         </td>
                         <td class="quantity-cell">{{ "{:,.2f}".format(item.quantity).replace(",", " ") }}</td>
                         <td class="avg-price-cell">{{ "{:,.2f}".format(item.average_price).replace(",", " ") }} ₽</td>
-                        <td class="current-price-cell">{{ "{:,.2f}".format(item.current_price).replace(",", " ") }} ₽</td>
+                        <td class="current-price-cell">{{ "{:,.2f}".format(item.current_price).replace(",", " ") }} ₽
+                        </td>
                         <td class="current-value-cell">
-    {% if item.asset_type == 'bond' and item.currency and item.currency != 'RUB' %}
-        {{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽
-        <small class="currency-note">{{ item.currency }}</small>
-    {% else %}
-        {{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽
-    {% endif %}
-</td>
+                            {% if item.asset_type == 'bond' and item.currency and item.currency != 'RUB' %}
+                            {{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽
+                            <small class="currency-note">{{ item.currency }}</small>
+                            {% else %}
+                            {{ "{:,.2f}".format(item.current_value).replace(",", " ") }} ₽
+                            {% endif %}
+                        </td>
                         <td class="change-cell">
-                            <div class="change-wrapper {% if item.total_change >= 0 %}positive{% else %}negative{% endif %}">
+                            <div
+                                class="change-wrapper {% if item.total_change >= 0 %}positive{% else %}negative{% endif %}">
                                 <span class="change-amount">
                                     {% if item.total_change >= 0 %}+{% endif %}
                                     {{ "{:,.2f}".format(item.total_change).replace(",", " ") }} ₽
@@ -128,7 +141,8 @@
                         <td class="actions-cell">
                             <button class="btn-action delete-btn" data-item-id="{{ item.id }}" title="Удалить">
                                 <svg viewBox="0 0 24 24">
-                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    <path
+                                        d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                                 </svg>
                             </button>
                         </td>
@@ -140,7 +154,8 @@
         {% else %}
         <div class="empty-portfolio">
             <svg class="empty-icon" viewBox="0 0 24 24">
-                <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
+                <path
+                    d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
             </svg>
             <h3>Портфель пуст</h3>
             <p>Добавьте свои первые активы для отслеживания</p>
@@ -160,7 +175,7 @@
         <div class="modal-body">
             <form id="addAssetForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                
+
                 <div class="form-group">
                     <label for="assetType">Тип актива:</label>
                     <select name="asset_type" id="assetType" class="form-control" required>
@@ -170,33 +185,33 @@
                         <option value="currency">Валюта</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="assetTicker">Тикер:</label>
                     <input type="text" name="ticker" id="assetTicker" class="form-control" required
-                           placeholder="Например: SBER, GAZP">
+                        placeholder="Например: SBER, GAZP">
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="assetQuantity">Количество:</label>
-                        <input type="number" name="quantity" id="assetQuantity" class="form-control" 
-                               step="0.01" min="0.01" value="1" required>
+                        <input type="number" name="quantity" id="assetQuantity" class="form-control" step="0.01"
+                            min="0.01" value="1" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="assetPrice">Средняя цена покупки:</label>
-                        <input type="number" name="average_price" id="assetPrice" class="form-control"
-                               step="0.01" min="0" value="0">
+                        <input type="number" name="average_price" id="assetPrice" class="form-control" step="0.01"
+                            min="0" value="0">
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="assetNotes">Примечания (необязательно):</label>
                     <textarea name="notes" id="assetNotes" class="form-control" rows="3"
-                              placeholder="Дополнительная информация..."></textarea>
+                        placeholder="Дополнительная информация..."></textarea>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelAdd">Отмена</button>
                     <button type="submit" class="btn btn-secondary">Добавить</button>

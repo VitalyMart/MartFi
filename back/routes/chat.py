@@ -1,3 +1,4 @@
+# routes/chat.py
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from ..services.chat_service import ChatService
@@ -16,6 +17,7 @@ async def chat_message(
     data = await request.json()
     message = data.get("message", "")
     model = data.get("model")
+    reporting_mode = data.get("reporting_mode", False)
     session_id = request.cookies.get("sessionid")
 
     if not message:
@@ -25,7 +27,8 @@ async def chat_message(
         message=message,
         user_id=current_user.id if current_user else None,
         session_id=session_id,
-        model=model
+        model=model,
+        reporting_mode=reporting_mode
     )
     return JSONResponse(result)
 
@@ -38,6 +41,7 @@ async def chat_message_stream(
     data = await request.json()
     message = data.get("message", "")
     model = data.get("model")
+    reporting_mode = data.get("reporting_mode", False)
     session_id = request.cookies.get("sessionid")
 
     if not message:
@@ -48,7 +52,8 @@ async def chat_message_stream(
             message=message,
             user_id=current_user.id if current_user else None,
             session_id=session_id,
-            model=model
+            model=model,
+            reporting_mode=reporting_mode
         ):
             yield chunk
 
@@ -79,5 +84,3 @@ async def clear_chat_history(
         session_id=session_id
     )
     return JSONResponse({"success": success})
-
-

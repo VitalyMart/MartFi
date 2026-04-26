@@ -1,3 +1,4 @@
+# services/rag_service.py
 import os
 import json
 import hashlib
@@ -12,7 +13,6 @@ from ..core.logger import logger
 from ..core.redis_client import redis_client
 from ..config_qdrant import qdrant_settings
 from dotenv import load_dotenv
-from typing import Optional, List, Dict, Any
 
 load_dotenv()
 
@@ -35,7 +35,8 @@ class RAGService:
             self._init_embeddings()
             self._init_qdrant()
             self.cache_ttl = 3600
-            self.top_k = 10
+            self.normal_top_k = 3
+            self.reporting_top_k = 6
             self.initialized = True
             logger.info("RAG service initialized successfully")
 
@@ -65,7 +66,9 @@ class RAGService:
 
     async def search_relevant_chunks(self, query: str, top_k: Optional[int] = None) -> List[Document]:
         try:
-            k = top_k or self.top_k
+            k = top_k or self.normal_top_k
+            logger.info(f"Searching for query: '{query[:50]}...' with top_k={k}")
+            
             loop = asyncio.get_event_loop()
             query_vector = await loop.run_in_executor(None, self.embeddings.embed_query, query)
             
@@ -81,37 +84,76 @@ class RAGService:
                         with_vectors=False
                     )
                     
-                    for point in results.points:
+                    logger.info(f"Found {len(results.points)} points in {collection_name}")
+                    
+                    for idx, point in enumerate(results.points):
                         if point.payload:
                             payload = point.payload
-                            metadata_dict = payload.get("metadata", {})
-                            content = payload.get("page_content", "")
+                            
+                            if 'metadata' in payload:
+                                meta = payload['metadata']
+                                company = meta.get('company', 'Unknown')
+                                content = payload.get('page_content', '')
+                                source = meta.get('source', '')
+                                summary = meta.get('summary', '')
+                                keywords = meta.get('keywords', [])
+                                questions = meta.get('questions', [])
+                                ticker = meta.get('ticker', '')
+                                period = meta.get('period', '')
+                                quarter = meta.get('quarter', '')
+                                report_type = meta.get('report_type', '')
+                                report_date = meta.get('report_date', '')
+                                currency = meta.get('currency', '')
+                            else:
+                                company = payload.get('company', 'Unknown')
+                                content = payload.get('page_content', '')
+                                source = payload.get('source', '')
+                                summary = payload.get('summary', '')
+                                keywords = payload.get('keywords', [])
+                                questions = payload.get('questions', [])
+                                ticker = payload.get('ticker', '')
+                                period = payload.get('period', '')
+                                quarter = payload.get('quarter', '')
+                                report_type = payload.get('report_type', '')
+                                report_date = payload.get('report_date', '')
+                                currency = payload.get('currency', '')
+                            
+                            if not content:
+                                continue
+                            
+                            score = point.score
+                            logger.info(f"  Point {idx+1}: score={score:.4f}, company={company}, period={period} Q{quarter if quarter else 'N/A'}")
+                            logger.info(f"    Content preview: {content[:100]}...")
                             
                             doc = Document(
                                 page_content=content,
                                 metadata={
-                                    "source": metadata_dict.get("source", ""),
-                                    "summary": metadata_dict.get("summary", ""),
-                                    "keywords": metadata_dict.get("keywords", ""),
-                                    "questions": metadata_dict.get("questions", ""),
-                                    "company": metadata_dict.get("company", ""),
-                                    "ticker": metadata_dict.get("ticker", ""),
-                                    "period": metadata_dict.get("period", ""),
-                                    "quarter": metadata_dict.get("quarter", ""),
-                                    "report_type": metadata_dict.get("report_type", ""),
-                                    "report_date": metadata_dict.get("report_date", ""),
-                                    "currency": metadata_dict.get("currency", ""),
+                                    "source": source,
+                                    "summary": summary,
+                                    "keywords": keywords,
+                                    "questions": questions,
+                                    "company": company,
+                                    "ticker": ticker,
+                                    "period": str(period) if period else "",
+                                    "quarter": str(quarter) if quarter else "",
+                                    "report_type": report_type,
+                                    "report_date": report_date,
+                                    "currency": currency,
                                     "collection": collection_name,
                                 }
                             )
-                            all_documents.append((point.score, doc))
+                            all_documents.append((score, doc))
                 except Exception as e:
                     logger.error(f"Error searching collection {collection_name}: {e}")
             
             all_documents.sort(key=lambda x: x[0], reverse=True)
             documents = [doc for _, doc in all_documents[:k]]
             
-            logger.info(f"Found {len(documents)} relevant chunks")
+            logger.info(f"Found {len(documents)} relevant chunks (requested {k})")
+            
+            if len(documents) == 0:
+                logger.warning(f"No documents found for query: {query}")
+            
             return documents
         except Exception as e:
             logger.error(f"Error searching chunks: {e}", exc_info=True)
@@ -122,42 +164,47 @@ class RAGService:
             return ""
         context_parts = []
         for i, doc in enumerate(documents, 1):
-            source = doc.metadata.get('source', 'Unknown')
-            doc_display_name = self._get_doc_display_name(source)
-            context_parts.append(f"[Документ {i}: {doc_display_name}]\n{doc.page_content}\n")
-        return "\n---\n".join(context_parts)
+            company = doc.metadata.get('company', 'Unknown')
+            period = doc.metadata.get('period', '')
+            quarter = doc.metadata.get('quarter', '')
+            period_str = f" {period} {quarter} квартал" if period and quarter else f" {period}" if period else ""
+            context_parts.append(f"[Документ {i}: {company}{period_str}]\n{doc.page_content}\n")
+        
+        context = "\n---\n".join(context_parts)
+        logger.info(f"Built context with {len(documents)} documents, total length: {len(context)} chars")
+        return context
 
     def _get_doc_display_name(self, doc_name: str) -> str:
-        display_names = {
-            'bonds_guide': 'Руководство по облигациям',
-            'companies': 'Информация о компаниях',
-            'funds_guide': 'Руководство по фондам',
-            'index': 'Индексы',
-            'stocks_guide': 'Руководство по акциям',
-            'about_MartFi': 'О MartFi'
-        }
-        return display_names.get(doc_name, doc_name)
+        return doc_name
 
-    async def get_rag_response(self, query: str, user_id: Optional[int] = None) -> Dict[str, Any]:
-        cache_key = f"rag_response:{hashlib.md5(query.encode()).hexdigest()}"
+    async def get_rag_response(self, query: str, user_id: Optional[int] = None, reporting_mode: bool = False) -> Dict[str, Any]:
+        cache_key = f"rag_response:{hashlib.md5(query.encode()).hexdigest()}:{reporting_mode}"
         try:
             cached = await redis_client.get(cache_key)
             if cached:
+                logger.info(f"Returning cached response for query: {query[:50]}...")
                 return json.loads(cached)
         except Exception as e:
             logger.error(f"Redis cache error: {e}")
 
-        relevant_docs = await self.search_relevant_chunks(query)
+        top_k = self.reporting_top_k if reporting_mode else self.normal_top_k
+        logger.info(f"Using top_k={top_k} (reporting_mode={reporting_mode})")
+        
+        relevant_docs = await self.search_relevant_chunks(query, top_k=top_k)
         context = self.build_context(relevant_docs)
-        documents_used = list(set([doc.metadata.get('source', 'Unknown') for doc in relevant_docs]))
+        documents_used = list(set([doc.metadata.get('company', 'Unknown') for doc in relevant_docs]))
 
         result = {
             "query": query,
             "context_used": bool(context),
             "chunks_count": len(relevant_docs),
             "documents_used": documents_used,
-            "context": context
+            "context": context,
+            "reporting_mode": reporting_mode,
+            "top_k_used": top_k
         }
+
+        logger.info(f"RAG result: context_used={result['context_used']}, chunks={result['chunks_count']}, docs={documents_used}")
 
         try:
             await redis_client.setex(cache_key, self.cache_ttl, json.dumps(result))
@@ -165,4 +212,3 @@ class RAGService:
             logger.error(f"Redis cache set error: {e}")
 
         return result
-    

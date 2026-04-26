@@ -1,3 +1,4 @@
+# services/chat_service.py
 import json
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from datetime import datetime
@@ -12,9 +13,9 @@ class ChatService:
         self.rag = rag_service
         self.history_ttl = 86400
 
-    async def process_message(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, model: Optional[str] = None) -> Dict[str, Any]:
+    async def process_message(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, model: Optional[str] = None, reporting_mode: bool = False) -> Dict[str, Any]:
         history = await self._get_chat_history(user_id, session_id)
-        rag_context = await self.rag.get_rag_response(message, user_id)
+        rag_context = await self.rag.get_rag_response(message, user_id, reporting_mode)
 
         messages = self._build_messages(history, message, rag_context)
         start_time = datetime.now()
@@ -22,7 +23,7 @@ class ChatService:
         response = await self.openrouter.chat_completion(
             messages=messages,
             model=model,
-            temperature=0.7,
+            temperature=0.1,
             max_tokens=1500
         )
 
@@ -38,7 +39,8 @@ class ChatService:
                 "rag_context_used": rag_context.get("context_used") if rag_context else False,
                 "documents_used": rag_context.get("documents_used") if rag_context else [],
                 "model": model or self.openrouter.default_model,
-                "response_time": response_time
+                "response_time": response_time,
+                "reporting_mode": reporting_mode
             }
         )
 
@@ -51,9 +53,9 @@ class ChatService:
             "model": model or self.openrouter.default_model
         }
 
-    async def process_message_stream(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, model: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def process_message_stream(self, message: str, user_id: Optional[int] = None, session_id: Optional[str] = None, model: Optional[str] = None, reporting_mode: bool = False) -> AsyncGenerator[str, None]:
         history = await self._get_chat_history(user_id, session_id)
-        rag_context = await self.rag.get_rag_response(message, user_id)
+        rag_context = await self.rag.get_rag_response(message, user_id, reporting_mode)
 
         messages = self._build_messages(history, message, rag_context)
         full_response = ""
@@ -61,7 +63,7 @@ class ChatService:
         async for chunk in self.openrouter.chat_completion_stream(
             messages=messages,
             model=model,
-            temperature=0.7,
+            temperature=0.1,
             max_tokens=1500
         ):
             yield chunk
@@ -85,7 +87,8 @@ class ChatService:
                     "rag_context_used": rag_context.get("context_used") if rag_context else False,
                     "documents_used": rag_context.get("documents_used") if rag_context else [],
                     "model": model or self.openrouter.default_model,
-                    "streamed": True
+                    "streamed": True,
+                    "reporting_mode": reporting_mode
                 }
             )
 
@@ -100,7 +103,7 @@ class ChatService:
     Используй сухой html
 
 Пример правильного вывода таблицы:
-<table>
+</td>
 <tr><th>Заголовок 1</th><th>Заголовок 2</th></tr>
 <tr><td>Данные 1</td><td>Данные 2</td></tr>
 </table>

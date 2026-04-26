@@ -440,3 +440,52 @@
 .message-assistant .message-content tr:hover td {
     background: #f9fafb;
 }
+
+.chat-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: flex-end;
+}
+
+.reporting-mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.reporting-mode-btn.active {
+    background: #4c9aff;
+    color: white;
+    border-color: #4c9aff;
+}
+
+.reporting-mode-btn.active svg {
+    stroke: white;
+}
+
+.reporting-mode-btn:hover {
+    background: #e0e0e0;
+}
+
+.reporting-mode-btn.active:hover {
+    background: #3a7bc8;
+}
+
+.message-system {
+    background: #f0f7ff;
+    border-left: 4px solid #4c9aff;
+    font-style: italic;
+    color: #555;
+}
+
+.message-system .message-content {
+    font-size: 0.9em;
+}
