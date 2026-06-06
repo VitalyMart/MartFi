@@ -21,6 +21,54 @@ class RAGService:
     _embeddings = None
     _async_client = None
 
+    _TICKER_MAP = {
+        "сбербанк": "SBER",
+        "сбер": "SBER",
+        "sber": "SBER",
+        "втб": "VTBR",
+        "vtbr": "VTBR",
+        "газпром": "GAZP",
+        "gazp": "GAZP",
+        "лукойл": "LKOH",
+        "lukoil": "LKOH",
+        "новатэк": "NVTK",
+        "novatek": "NVTK",
+        "nvtk": "NVTK",
+        "озон": "OZON",
+        "ozon": "OZON",
+        "полюс": "PLZL",
+        "plzl": "PLZL",
+        "x5": "X5",
+        "x5 group": "X5",
+        "яндекс": "YDEX",
+        "yandex": "YDEX",
+        "ydex": "YDEX",
+        "татнефть": "TATN",
+        "tatn": "TATN",
+        "сургутнефтегаз": "SNGS",
+        "sngs": "SNGS",
+        "норильский никель": "GMKN",
+        "норникель": "GMKN",
+        "gmkn": "GMKN",
+        "московская биржа": "MOEX",
+        "moex": "MOEX",
+        "т-технологии": "T",
+        "т банк": "T",
+        "tcsg": "T",
+        "роснефть": "ROSN",
+        "rosn": "ROSN",
+    }
+
+    @classmethod
+    def extract_ticker_from_query(cls, query: str) -> Optional[str]:
+        if not query:
+            return None
+        query_lower = query.lower()
+        for key, ticker in cls._TICKER_MAP.items():
+            if key in query_lower:
+                return ticker
+        return None
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -36,7 +84,7 @@ class RAGService:
             self._init_qdrant()
             self.cache_ttl = 3600
             self.normal_top_k = 3
-            self.reporting_top_k = 6
+            self.reporting_top_k = 5
             self.initialized = True
             logger.info("RAG service initialized successfully")
 
@@ -64,41 +112,58 @@ class RAGService:
             logger.info("Async Qdrant client created")
         self.async_client = RAGService._async_client
 
-    async def search_relevant_chunks(self, query: str, top_k: Optional[int] = None) -> List[Document]:
+    async def search_relevant_chunks(self, query: str, top_k: Optional[int] = None, reporting_mode: bool = False) -> List[Document]:
         try:
             k = top_k or self.normal_top_k
-            logger.info(f"Searching for query: '{query[:50]}...' with top_k={k}")
-            
+            logger.info(f"Searching for query: '{query[:50]}...' with top_k={k}, reporting_mode={reporting_mode}")
+
             loop = asyncio.get_event_loop()
             query_vector = await loop.run_in_executor(None, self.embeddings.embed_query, query)
-            
+
             all_documents = []
-            
+
+            target_ticker = None
+            if reporting_mode:
+                target_ticker = self.extract_ticker_from_query(query)
+                if target_ticker:
+                    logger.info(f"Filtering by ticker: {target_ticker}")
+
             for collection_name in qdrant_settings.ALL_COLLECTIONS:
                 try:
+                    query_filter = None
+                    if reporting_mode and target_ticker:
+                        query_filter = {
+                            "must": [
+                                {
+                                    "key": "metadata.ticker",
+                                    "match": {"value": target_ticker}
+                                }
+                            ]
+                        }
+
                     results = await self.async_client.query_points(
                         collection_name=collection_name,
                         query=query_vector,
+                        query_filter=query_filter,
                         limit=k,
                         with_payload=True,
                         with_vectors=False
                     )
-                    
+
                     logger.info(f"Found {len(results.points)} points in {collection_name}")
-                    
                     for idx, point in enumerate(results.points):
                         if point.payload:
                             payload = point.payload
-                            
+
                             if 'metadata' in payload:
                                 meta = payload['metadata']
                                 company = meta.get('company', 'Unknown')
+                                ticker = meta.get('ticker', '')
                                 content = payload.get('page_content', '')
                                 source = meta.get('source', '')
                                 summary = meta.get('summary', '')
                                 keywords = meta.get('keywords', [])
                                 questions = meta.get('questions', [])
-                                ticker = meta.get('ticker', '')
                                 period = meta.get('period', '')
                                 quarter = meta.get('quarter', '')
                                 report_type = meta.get('report_type', '')
@@ -106,25 +171,25 @@ class RAGService:
                                 currency = meta.get('currency', '')
                             else:
                                 company = payload.get('company', 'Unknown')
+                                ticker = payload.get('ticker', '')
                                 content = payload.get('page_content', '')
                                 source = payload.get('source', '')
                                 summary = payload.get('summary', '')
                                 keywords = payload.get('keywords', [])
                                 questions = payload.get('questions', [])
-                                ticker = payload.get('ticker', '')
                                 period = payload.get('period', '')
                                 quarter = payload.get('quarter', '')
                                 report_type = payload.get('report_type', '')
                                 report_date = payload.get('report_date', '')
                                 currency = payload.get('currency', '')
-                            
+
                             if not content:
                                 continue
-                            
+
                             score = point.score
-                            logger.info(f"  Point {idx+1}: score={score:.4f}, company={company}, period={period} Q{quarter if quarter else 'N/A'}")
+                            logger.info(f"  Point {idx+1}: score={score:.4f}, company={company}, ticker={ticker}, period={period} Q{quarter if quarter else 'N/A'}")
                             logger.info(f"    Content preview: {content[:100]}...")
-                            
+
                             doc = Document(
                                 page_content=content,
                                 metadata={
@@ -145,15 +210,13 @@ class RAGService:
                             all_documents.append((score, doc))
                 except Exception as e:
                     logger.error(f"Error searching collection {collection_name}: {e}")
-            
+
             all_documents.sort(key=lambda x: x[0], reverse=True)
             documents = [doc for _, doc in all_documents[:k]]
-            
+
             logger.info(f"Found {len(documents)} relevant chunks (requested {k})")
-            
-            if len(documents) == 0:
+            if not documents:
                 logger.warning(f"No documents found for query: {query}")
-            
             return documents
         except Exception as e:
             logger.error(f"Error searching chunks: {e}", exc_info=True)
@@ -169,7 +232,6 @@ class RAGService:
             quarter = doc.metadata.get('quarter', '')
             period_str = f" {period} {quarter} квартал" if period and quarter else f" {period}" if period else ""
             context_parts.append(f"[Документ {i}: {company}{period_str}]\n{doc.page_content}\n")
-        
         context = "\n---\n".join(context_parts)
         logger.info(f"Built context with {len(documents)} documents, total length: {len(context)} chars")
         return context
@@ -189,8 +251,8 @@ class RAGService:
 
         top_k = self.reporting_top_k if reporting_mode else self.normal_top_k
         logger.info(f"Using top_k={top_k} (reporting_mode={reporting_mode})")
-        
-        relevant_docs = await self.search_relevant_chunks(query, top_k=top_k)
+
+        relevant_docs = await self.search_relevant_chunks(query, top_k=top_k, reporting_mode=reporting_mode)
         context = self.build_context(relevant_docs)
         documents_used = list(set([doc.metadata.get('company', 'Unknown') for doc in relevant_docs]))
 

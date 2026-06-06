@@ -19,3 +19,8 @@ qdrant_storage/
 # RAG data
 rag_knowledge_data/
 metrics_data/
+
+# RAG results and listing
+
+all_project_files.txt
+all_python_files.txt

@@ -63,7 +63,7 @@ class ChatService:
         async for chunk in self.openrouter.chat_completion_stream(
             messages=messages,
             model=model,
-            temperature=0.1,
+            temperature=0.0,
             max_tokens=1500
         ):
             yield chunk
@@ -95,7 +95,7 @@ class ChatService:
     def _build_messages(self, history: List[Dict[str, str]], current_message: str, rag_context: Optional[Dict[str, Any]] = None) -> List[Dict[str, str]]:
         system_prompt = """Ты - финансовый ассистент MartFi, помогающий пользователям с инвестициями на российском рынке.
 Ты отвечаешь на русском языке, дружелюбно и профессионально.
-Твои ответы должны быть точными, полезными и основанными на фактах.
+Твои ответы должны быть точными, полезными и основанными на фактах, КОТОРЫЕ ТЫ ПОЛУЧИШЬ В СООБЩЕНИИ НИЖЕ. Если нужной информации тебе не предоставили, то скажи: Я не знаю. Не нужно округлять значения.
 
 ВАЖНОЕ ПРАВИЛО ДЛЯ ТАБЛИЦ:
     Не используй markdown для таблиц
@@ -103,7 +103,7 @@ class ChatService:
     Используй сухой html
 
 Пример правильного вывода таблицы:
-</td>
+<table></td>
 <tr><th>Заголовок 1</th><th>Заголовок 2</th></tr>
 <tr><td>Данные 1</td><td>Данные 2</td></tr>
 </table>
